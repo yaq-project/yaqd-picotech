@@ -34,7 +34,6 @@ wave_type_to_code = {
 # maximum ADC count value
 # drivers normalize to 16 bit (15 bit signed) regardless of resolution
 maxADC = ctypes.c_uint16(2**15)
-
 # ddk: ignore chopper class for now; only two physical channels to test
 
 
@@ -81,7 +80,7 @@ class YaqdPicotechAdcTriggered(Sensor):
         x += [c.physical_channel for c in self._channels]
         assert len(set(x)) == len(x)
 
-        assert _config.model == "ps2000"
+        assert self._config.model == "ps2000"
 
         # finish
         self._open_unit()
@@ -183,7 +182,7 @@ class YaqdPicotechAdcTriggered(Sensor):
         ready = ctypes.c_int16(0)
         check = ctypes.c_int16(0)
         while ready.value == check.value:
-            status["isReady"] = ps.ps2000_ready(chandle)
+            status["isReady"] = ps2000.ps2000_ready(self.chandle)
             ready = ctypes.c_int16(status["isReady"])
 
         # create buffers for data
@@ -192,7 +191,7 @@ class YaqdPicotechAdcTriggered(Sensor):
             if c.enable:
                 buffers[c.physical_channel] = (ctypes.c_int16 * self._config._max_samples)()
         oversample = ctypes.c_int16(self._config.oversample)
-        status = ps.ps2000_get_values(
+        status = ps2000.ps2000_get_values(
             self.chandle, # handle
             # pointers to channel buffers
             *[ctypes.byref(b) if b is not None else None for b in buffers],
@@ -202,7 +201,8 @@ class YaqdPicotechAdcTriggered(Sensor):
         assert_pico2000_ok(status)
 
         # todo: match physical channel to buffer; currently assumes order preserved
-        out = {c.name: c.adc_to_V(b) for c, b in zip(self._channels, buffers)}
+        samples = {c.name: c.adc_to_V(b) for c, b in zip(self._channels, buffers)}
+        return samples
 
     async def _measure(self):
         pass
