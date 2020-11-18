@@ -53,10 +53,10 @@ type = "int"
 default = 5
 doc = "Time step between measurements is `10 ns * 2^(time_base)`."
 
-[config.max_readings]
+[config.max_samples]
 type = "int"
 default = 200
-doc = "Target number of readings per trigger (per channel)."
+doc = "Number of samples per trigger (per channel)."
 
 [config.oversample]
 type = "int"

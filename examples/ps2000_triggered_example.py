@@ -78,23 +78,28 @@ try:
         ready = ctypes.c_int16(status["isReady"])
 
     # Create buffers ready for data
-    bufferA = (ctypes.c_int16 * maxSamples)()
-    bufferB = (ctypes.c_int16 * maxSamples)()
+    # bufferA = (ctypes.c_int16 * maxSamples)()
+    # bufferB = (ctypes.c_int16 * maxSamples)()
+    buffers = [None] * 4
+    for i in range(len(["a", "b"])):
+        buffers[i] = (ctypes.c_int16 * maxSamples)()
 
     # Get data from scope
     cmaxSamples = ctypes.c_int32(maxSamples)
     status["getValues"] = ps.ps2000_get_values(
         chandle, # handle
-        ctypes.byref(bufferA),  # pointer to buffer_a
-        ctypes.byref(bufferB),  # pointer to buffer_b
-        None,  # pointer to buffer_c (NA)
-        None,  # pointer to buffer_d (NA)
+        *[ctypes.byref(b) if b is not None else None for b in buffers],
+        # ctypes.byref(bufferA),  # pointer to buffer_a
+        # ctypes.byref(bufferB),  # pointer to buffer_b
+        # None,  # pointer to buffer_c (NA)
+        # None,  # pointer to buffer_d (NA)
         ctypes.byref(oversample),  # pointer to overflow
         cmaxSamples  # number of values
     )
     assert_pico2000_ok(status["getValues"])
 
-
+    bufferA = buffers[0]
+    bufferB = buffers[1]
     # convert ADC counts data to mV
     adc2mVChA =  adc2mV(bufferA, chARange, maxADC)
     adc2mVChB =  adc2mV(bufferB, chBRange, maxADC)

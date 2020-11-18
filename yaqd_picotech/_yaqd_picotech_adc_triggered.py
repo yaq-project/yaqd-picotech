@@ -153,10 +153,10 @@ class YaqdPicotechAdcTriggered(Sensor):
 
         maxSamplesReturn = ctypes.c_int32()
         oversample = ctypes.c_int16(self._config.oversample)
-        status = ps.ps2000_get_timebase(
+        status = ps2000.ps2000_get_timebase(
             self.chandle,  # handle
             self._config.timebase,  # 0 is fastest, 2x slower each increment
-            self._config.max_readings,  # number of readings
+            self._config.max_samples,  # number of readings
             ctypes.byref(self.timeInterval),  # pointer to time interval between readings (ns)
             ctypes.byref(self.timeUnits),  # pointer to time units
             oversample,  # on board averaging of concecutive `oversample` timepoints (increase resolution)
@@ -165,5 +165,110 @@ class YaqdPicotechAdcTriggered(Sensor):
         # todo: readout params on failure
         assert_pico2000_ok(status)
 
+    def _measure_samples(self):
+        from picosdk.ps2000 import ps2000
+        from picosdk.functions import assert_pico2000_ok
+
+        timeIndisposedms = ctypes.c_int32()
+        status = ps2000.ps2000_run_block(
+            self.chandle,
+            self._config.max_samples,
+            self._config.timebase,
+            ctypes.c_int16(self._config.oversample),
+            ctypes.byref(timeIndisposedms)
+        )
+        assert_pico2000_ok(status)
+
+        # Check for data collection to finish
+        ready = ctypes.c_int16(0)
+        check = ctypes.c_int16(0)
+        while ready.value == check.value:
+            status["isReady"] = ps.ps2000_ready(chandle)
+            ready = ctypes.c_int16(status["isReady"])
+
+        # create buffers for data
+        buffers = [None] * 4
+        for c in range(len(self._channels)):
+            if c.enable:
+                buffers[c.physical_channel] = (ctypes.c_int16 * self._config._max_samples)()
+        oversample = ctypes.c_int16(self._config.oversample)
+        status = ps.ps2000_get_values(
+            self.chandle, # handle
+            # pointers to channel buffers
+            *[ctypes.byref(b) if b is not None else None for b in buffers],
+            ctypes.byref(oversample),  # pointer to overflow
+            ctypes.c_int32(self._config.max_samples)  # number of values
+        )
+        assert_pico2000_ok(status)
+
+        # todo: match physical channel to buffer; currently assumes order preserved
+        out = {c.name: c.adc_to_V(b) for c, b in zip(self._channels, buffers)}
+
     async def _measure(self):
-        return {"channel": 0}
+        pass
+        # just guide code: verbatim copied from yaq-ni
+        # -----------------------------------------------------------------------------------------
+        if False:
+            samples = await self._loop.run_in_executor(None, self._measure_samples)
+            shots = np.empty(
+                [
+                    len(self._channel_names) + len([c for c in self._choppers if c.enabled]),
+                    self._state["nshots"],
+                ]
+            )
+            # channels
+            i = 0
+            for channel_index, channel in enumerate(self._channels):
+                if not channel.enabled:
+                    continue
+                # signal
+                idxs = self._sample_correspondances == channel_index + 1
+                idxs[channel.signal_stop + 1 :] = False
+                signal_samples = samples[idxs]
+                signal_shots = process_samples(channel.signal_method, signal_samples)
+                # baseline
+                if not channel.use_baseline:
+                    baseline = 0
+                    continue
+                idxs = self._sample_correspondances == channel_index + 1
+                idxs[: channel.signal_stop + 1] = False
+                baseline_samples = samples[idxs]
+                baseline_shots = process_samples(channel.baseline_method, baseline_samples)
+                # math
+                shots[i] = signal_shots - baseline_shots
+                if channel.invert:
+                    shots[i] *= -1
+                i += 1
+            # choppers
+            for chopper in self._choppers:
+                if not chopper.enabled:
+                    continue
+                cutoff = 1.0  # volts
+                out = samples[chopper.index]
+                out[out <= cutoff] = -1.0
+                out[out > cutoff] = 1.0
+                if chopper.invert:
+                    out *= -1
+                shots[i] = out
+                i += 1
+            # process
+            path = self._config["shots_processing_path"]
+            name = os.path.basename(path).split(".")[0]
+            directory = os.path.dirname(path)
+            f, p, d = imp.find_module(name, [directory])
+            processing_module = imp.load_module(name, f, p, d)
+            kinds = ["channel" for _ in self._channel_names] + [
+                "chopper" for c in self._choppers if c.enabled
+            ]
+            names = self._channel_names + [c.name for c in self._choppers if c.enabled]
+            out = processing_module.process(shots, names, kinds)
+            if len(out) == 3:
+                out, out_names, out_signed = out
+            else:
+                out, out_names = out
+                out_signed = False
+            # finish
+            self._samples = samples
+            self._shots = shots
+            out = {k: v for k, v in zip(self._channel_names, out)}
+            return out
