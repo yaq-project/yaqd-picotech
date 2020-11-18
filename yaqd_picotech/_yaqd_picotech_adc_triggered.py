@@ -4,15 +4,25 @@ import asyncio
 import ctypes
 import numpy as np
 
+from picosdk.functions import adc2mV, mV2adc
 from typing import Dict, Any, List
-
-# from picosdk.functions import adc2mV, mV2adc, assert_pico2000_ok
 from yaqd_core import Sensor
 
-
 # todo: parse range codes based on psx000.PSx000_VOLTAGE_RANGE dict
-ranges = [0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20]
-code_to_range = {i+1: ranges[i] for i in range(len(ranges))}
+# ranges = [0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20]
+# code_to_range = {i+1: ranges[i] for i in range(len(ranges))}
+range_to_code = {
+    "20 mV": 1,
+    "50 mV": 2,
+    "100 mV": 3,
+    "200 mV": 4,
+    "500 mV": 5,
+    "1 V": 6,
+    "2 V": 7,
+    "5 V": 8,
+    "10 V": 9,
+    "20 V": 10
+}
 
 wave_type_to_code = {
     k: i for i, k in enumerate([
@@ -21,8 +31,13 @@ wave_type_to_code = {
     )
 }
 
+# maximum ADC count value
+# ddk: counts span 16 bit signed, even if it's only 8-bit
+maxADC = ctypes.c_uint16(2**15)
 
 # ddk: ignore chopper class for now; only two channels to test
+
+
 @dataclass
 class Channel:
     name: str
@@ -38,7 +53,11 @@ class Channel:
     baseline_method: str
     signal_presample: int = 0
 
+    def volts_to_adc(self, x):
+        return mV2adc(x / 1e3, range_to_code[self.range], maxADC)
 
+    def adc_to_volts(self, x):
+        return adc2mV(x, range_to_code[self.range], maxADC) / 1e3
 
 
 class YaqdPicotechAdcTriggered(Sensor):
@@ -46,7 +65,6 @@ class YaqdPicotechAdcTriggered(Sensor):
 
     def __init__(self, name, config, config_filepath):
         super().__init__(name, config, config_filepath)
-        # Perform any unique initialization
 
         self._channels = []
         for k, d in self._config["channels"].items():
@@ -61,14 +79,11 @@ class YaqdPicotechAdcTriggered(Sensor):
         x += [c.physical_channel for c in self._channels]
         assert len(set(x)) == len(x)
 
-        # maximum ADC count value
-        maxADC = ctypes.c_uint16(2**15)
-        # ddk: counts appears ready for 16 bit signed
-
         # finish
         self._open_unit()
         self._set_channels()
-        if _config.is_self_triggered:
+        self._set_block_time()
+        if self._config.is_self_triggered:
             self._set_self_trigger()
 
     def _open_unit(self):
@@ -89,11 +104,8 @@ class YaqdPicotechAdcTriggered(Sensor):
                 c.physical_channel,  # channel
                 c.enabled,  # enabled
                 c.coupling,  # dc (True) / ac (False)
-                c.range,  # 
+                range_to_code[c.range],  # range code
             )
-            for c in self._channels:
-                c.V_to_adc = lambda x: mV2adc(x / 1e3, c.range, maxADC)
-                c.adc_to_V = lambda x: adc2mV(x, c.range, maxADC) / 1e3
             assert_pico2000_ok(status)
 
     def _set_self_trigger(self):
@@ -122,10 +134,9 @@ class YaqdPicotechAdcTriggered(Sensor):
             0,  # direction (0=rising, 1=falling)
             -50, # delay the delay, as a percentage of the requested number of data points, between
             #      the trigger event and the start of the block
-            1  # ms to wait before collecting if no trigger recieved (0 = infinity)
+            5  # ms to wait before collecting if no trigger recieved (0 = infinity)
         )
         assert_pico2000_ok(status)
-
 
     async def _measure(self):
         return {"channel": 0}
