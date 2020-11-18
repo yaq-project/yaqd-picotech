@@ -1,0 +1,106 @@
+protocol = "yaqd-picotech-adc-triggered"
+doc = ""
+traits = ["is-daemon", "is-sensor"]
+hardware = ["picotech:ps2000"]
+
+[links]
+source = "https://gitlab.com/yaq/yaqd-picotech"
+bugtracker = "https://gitlab.com/yaq/yaqd-picotech/-/issues"
+
+[installation]
+PyPI = "https://pypi.org/project/yaqd-picotech"
+
+[[types]]
+type = "enum"
+name = "processing_method"
+symbols = ["average", "sum", "min", "max"]
+default = "average"
+
+[[types]]
+type = "record"
+name = "channel"
+fields = [{"name"="name", "type"="string"},
+          {"name"="range", "type"="string"},
+          {"name"="enabled", "type"="boolean", "default"=true},
+      {"name"="coupling", "type"=["DC", "AC"], "default"="DC"}
+	  {"name"="invert", "type"="boolean", "default"=false},
+	  {"name"="use_baseline", "type"="boolean", "default"=false},
+	  {"name"="baseline_start", "type"=["null", "int"], "default"="__null__"},
+	  {"name"="baseline_stop", "type"=["null", "int"], "default"="__null__"},
+	  {"name"="baseline_presample", "type"="int", default=0},
+	  {"name"="baseline_method", "type"="processing_method"}]
+
+[[types]]
+type = "record"
+name = "chopper"
+fields = [
+    {"name"="name", "type"="string"},
+    {"name"="enabled", "type"="boolean", "default"=true},
+	{"name"="invert", "type"="boolean", "default"=false},
+	{"name"="index", "type"="int"}
+]
+
+[config]
+
+[config.model]
+type = "string"
+default = "ps2000"
+
+[config.trigger_source]
+type = "string"
+default = "B"
+
+[config.is_self_triggered]
+type = "boolean"
+default = false
+doc = "Sets whether (True) or not (False) ADC is triggered by its own AWG.  Connect AWG to trigger_source."
+
+[config.t_range]
+type = "float"
+default = 900
+doc = "Time range over which a trace acquires, in microseconds."
+
+[config.DC_coupled]
+type = "boolean"
+default = true
+doc = "DC (True) or AC (False) coupling."
+
+[state]
+
+[state.nshots]
+type = "int"
+default = 100
+
+[state.shots_processing_script]
+type = ["null", "string"]
+doc = "Path to script for shots processing."
+default = "__null__"
+
+[messages]
+
+[messages.get_measured_samples]
+response = "ndarray"
+doc = "Get an array of shape (sample, shot)."
+
+[messages.get_measured_shots]
+response = "ndarray"
+
+[messages.get_nshots]
+doc = "Get the currently planned number of shots."
+response = "int"
+
+[messages.set_nshots]
+doc = "Set the number of shots to acquire."
+request = [{"name"="nshots", "type"="int"}]
+
+[messages.get_sample_correspondances]
+doc = "Returns an array of integers of length nsamples. Zero indicates rest sample. Postive indicates channel. Negative indicates chopper."
+response = "ndarray"
+
+[messages.get_shots_processing_script]
+doc = "Get the path to the currently applied shots processing script."
+response = "string"
+
+[messages.set_shots_processing_script]
+doc = "Give the path to a shots processing script."
+request = [{"name"="path", "type"="string"}]
