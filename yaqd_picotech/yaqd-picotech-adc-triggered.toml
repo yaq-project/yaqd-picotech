@@ -48,15 +48,21 @@ type = "boolean"
 default = false
 doc = "Sets whether (True) or not (False) ADC is triggered by its own AWG.  Connect AWG to trigger_source."
 
-[config.t_range]
-type = "float"
-default = 900
-doc = "Time range over which a trace acquires, in microseconds."
+[config.time_base]
+type = "int"
+default = 5
+doc = "Time step between measurements is `10 ns * 2^(time_base)`."
 
-[config.DC_coupled]
-type = "boolean"
-default = true
-doc = "DC (True) or AC (False) coupling."
+[config.max_readings]
+type = "int"
+default = 200
+doc = "Target number of readings per trigger (per channel)."
+
+[config.oversample]
+type = "int"
+default = 16
+doc = "Average on board to increase vertical resolution.  Reduces output readings per trigger and increases time_interval in proportion."
+
 
 [state]
 

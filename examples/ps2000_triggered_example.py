@@ -37,15 +37,15 @@ try:
     maxADC = ctypes.c_uint16(2**15)  # ddk: counts appears ready for 16 bit signed...
     adc_threshold = mV2adc(0, chARange, maxADC)
     # Set number of pre and post trigger samples to be collected
-    maxSamples = 2000
+    maxSamples = 200  # maxSamples * oversample < maxSamplesReturn = memory / num_channels
 
     status["set_trigger"] = ps.ps2000_set_trigger(chandle, 0, adc_threshold, 0, -50, 1)
     assert_pico2000_ok(status["set_trigger"])
 
-    timebase = 6
+    timebase = 5
     timeInterval = ctypes.c_int32()
     timeUnits = ctypes.c_int32()
-    oversample = ctypes.c_int16(1)
+    oversample = ctypes.c_int16(16)
     maxSamplesReturn = ctypes.c_int32()
     status["getTimebase"] = ps.ps2000_get_timebase(
         chandle,  # handle
@@ -57,6 +57,7 @@ try:
         ctypes.byref(maxSamplesReturn)
     )
     assert_pico2000_ok(status["getTimebase"])
+    print(timeInterval, timeUnits, maxSamplesReturn)
 
 
     timeIndisposedms = ctypes.c_int32()

@@ -32,10 +32,10 @@ wave_type_to_code = {
 }
 
 # maximum ADC count value
-# ddk: counts span 16 bit signed, even if it's only 8-bit
+# drivers normalize to 16 bit (15 bit signed) regardless of resolution
 maxADC = ctypes.c_uint16(2**15)
 
-# ddk: ignore chopper class for now; only two channels to test
+# ddk: ignore chopper class for now; only two physical channels to test
 
 
 @dataclass
@@ -73,18 +73,24 @@ class YaqdPicotechAdcTriggered(Sensor):
         self._channel_names = [c.name for c in self._channels if c.enabled]  # expected by parent
         # todo: readout is in mV currently, so adjust accordingly
         self._channel_units = {k: "V" for k in self._channel_names}  # expected by parent
+        self.timeInterval = ctypes.c_int32()
+        self.timeUnits = ctypes.c_int32()
 
         # check that all physical channels are unique
         x = []
         x += [c.physical_channel for c in self._channels]
         assert len(set(x)) == len(x)
 
+        assert _config.model == "ps2000"
+
         # finish
         self._open_unit()
         self._set_channels()
         self._set_block_time()
+        # trigger
         if self._config.is_self_triggered:
-            self._set_self_trigger()
+            self._set_awg_trigger()
+        self._set_trigger()
 
     def _open_unit(self):
         from picosdk.ps2000 import ps2000
@@ -96,7 +102,7 @@ class YaqdPicotechAdcTriggered(Sensor):
 
     def _set_channels(self):
         from picosdk.ps2000 import ps2000
-        from picosdk.functions import assert_pico2000_ok, mV2adc, adc2mV
+        from picosdk.functions import assert_pico2000_ok
 
         for c in self._channels:
             status = ps2000.ps2000_set_channel(
@@ -108,7 +114,22 @@ class YaqdPicotechAdcTriggered(Sensor):
             )
             assert_pico2000_ok(status)
 
-    def _set_self_trigger(self):
+    def _set_trigger(self):
+        from picosdk.ps2000 import ps2000
+        from picosdk.functions import assert_pico2000_ok
+        trigger_channel = [c for c in self.channels if c.name==self.config.trigger_source][0]
+        status = ps2000.ps2000_set_trigger(
+            self.chandle,
+            trigger_channel.physical_channel,  # todo: convert to physical channel
+            trigger_channel.V_to_adc(0),  # threshold
+            0,  # direction (0=rising, 1=falling)
+            -50, # delay the delay, as a percentage of the requested number of data points, between
+            #      the trigger event and the start of the block
+            5  # ms to wait before collecting if no trigger recieved (0 = infinity)
+        )
+        assert_pico2000_ok(status)
+
+    def _set_awg_trigger(self):
         from picosdk.ps2000 import ps2000
         from picosdk.functions import assert_pico2000_ok
         # awg
@@ -125,17 +146,23 @@ class YaqdPicotechAdcTriggered(Sensor):
             0  # number of sweeps
         )
         assert_pico2000_ok(status)
-        # trigger
-        trigger_channel = [c for c in self.channels if c.name==self.config.trigger_source][0]
-        status = ps2000.ps2000_set_trigger(
-            self.chandle,
-            trigger_channel.physical_channel,  # todo: convert to physical channel
-            trigger_channel.V_to_adc(0),  # threshold
-            0,  # direction (0=rising, 1=falling)
-            -50, # delay the delay, as a percentage of the requested number of data points, between
-            #      the trigger event and the start of the block
-            5  # ms to wait before collecting if no trigger recieved (0 = infinity)
+
+    def _set_block_time(self, timebase, max_samples):
+        from picosdk.ps2000 import ps2000
+        from picosdk.functions import assert_pico2000_ok
+
+        maxSamplesReturn = ctypes.c_int32()
+        oversample = ctypes.c_int16(self._config.oversample)
+        status = ps.ps2000_get_timebase(
+            self.chandle,  # handle
+            self._config.timebase,  # 0 is fastest, 2x slower each increment
+            self._config.max_readings,  # number of readings
+            ctypes.byref(self.timeInterval),  # pointer to time interval between readings (ns)
+            ctypes.byref(self.timeUnits),  # pointer to time units
+            oversample,  # on board averaging of concecutive `oversample` timepoints (increase resolution)
+            ctypes.byref(maxSamplesReturn) # pointer to actual number of available samples
         )
+        # todo: readout params on failure
         assert_pico2000_ok(status)
 
     async def _measure(self):
