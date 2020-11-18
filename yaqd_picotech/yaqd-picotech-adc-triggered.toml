@@ -19,25 +19,18 @@ default = "average"
 [[types]]
 type = "record"
 name = "channel"
-fields = [{"name"="name", "type"="string"},
-          {"name"="range", "type"="string"},
-          {"name"="enabled", "type"="boolean", "default"=true},
-      {"name"="coupling", "type"=["DC", "AC"], "default"="DC"}
-	  {"name"="invert", "type"="boolean", "default"=false},
-	  {"name"="use_baseline", "type"="boolean", "default"=false},
-	  {"name"="baseline_start", "type"=["null", "int"], "default"="__null__"},
-	  {"name"="baseline_stop", "type"=["null", "int"], "default"="__null__"},
-	  {"name"="baseline_presample", "type"="int", default=0},
-	  {"name"="baseline_method", "type"="processing_method"}]
-
-[[types]]
-type = "record"
-name = "chopper"
 fields = [
-    {"name"="name", "type"="string"},
+	{"name"="name", "type"="string"},
+	{"name"="physical_channel", "type"="int"}
+	{"name"="range", "type"=["20 mV", "50 mV", "100 mV", "200 mV", "500 mV", "1 V", "2 V", "5 V", "10 V", "20 V"], "default"="5 V"},
     {"name"="enabled", "type"="boolean", "default"=true},
+    {"name"="coupling", "type"=["DC", "AC"], "default"="DC"}
 	{"name"="invert", "type"="boolean", "default"=false},
-	{"name"="index", "type"="int"}
+	{"name"="use_baseline", "type"="boolean", "default"=false},
+	{"name"="baseline_start", "type"=["null", "int"], "default"="__null__"},
+	{"name"="baseline_stop", "type"=["null", "int"], "default"="__null__"},
+	{"name"="baseline_presample", "type"="int", default=0},
+	{"name"="baseline_method", "type"="processing_method"}
 ]
 
 [config]

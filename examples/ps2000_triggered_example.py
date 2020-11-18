@@ -12,7 +12,6 @@ chARange = chBRange = 6
 status = {}
 wave_type = {k: i for i, k in enumerate(["sine", "square", "triangle", "ramp_up", "ramp_down", "dc"])}
 
-
 status["openUnit"] = ps.ps2000_open_unit()
 assert_pico2000_ok(status["openUnit"])
 chandle = ctypes.c_int16(status["openUnit"])

@@ -6,9 +6,39 @@ import numpy as np
 
 from typing import Dict, Any, List
 
-from picosdk.ps2000 import ps2000 as ps
-from picosdk.functions import adc2mV, mV2adc, assert_pico2000_ok
+# from picosdk.functions import adc2mV, mV2adc, assert_pico2000_ok
 from yaqd_core import Sensor
+
+
+# todo: parse range codes based on psx000.PSx000_VOLTAGE_RANGE dict
+ranges = [0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20]
+code_to_range = {i+1: ranges[i] for i in range(len(ranges))}
+
+wave_type_to_code = {
+    k: i for i, k in enumerate([
+        "sine", "square", "triangle", "ramp_up", "ramp_down", "dc"
+        ]
+    )
+}
+
+
+# ddk: ignore chopper class for now; only two channels to test
+@dataclass
+class Channel:
+    name: str
+    range: str = "1 V"
+    physical_channel: int
+    enabled: bool = True
+    coupling: str = "DC"
+    invert: bool = False
+    use_baseline: bool = False
+    baseline_start: int
+    baseline_stop: int
+    baseline_presample: int = 0
+    baseline_method: str
+    signal_presample: int = 0
+
+
 
 
 class YaqdPicotechAdcTriggered(Sensor):
@@ -18,25 +48,84 @@ class YaqdPicotechAdcTriggered(Sensor):
         super().__init__(name, config, config_filepath)
         # Perform any unique initialization
 
-        self._channel_names = ["channel"]
-        self._channel_units = {"channel": "units"}
+        self._channels = []
+        for k, d in self._config["channels"].items():
+            channel = Channel(**d, physical_channel=k)
+            self._channels.append(channel)
+        self._channel_names = [c.name for c in self._channels if c.enabled]  # expected by parent
+        # todo: readout is in mV currently, so adjust accordingly
+        self._channel_units = {k: "V" for k in self._channel_names}  # expected by parent
 
-        status["openUnit"] = ps.ps2000_open_unit()
-        assert_pico2000_ok(status["openUnit"])
-        self.chandle = ctypes.c_int16(status["openUnit"])
+        # check that all physical channels are unique
+        x = []
+        x += [c.physical_channel for c in self._channels]
+        assert len(set(x)) == len(x)
 
-        status["setsig"] = ps.ps2000_set_sig_gen_built_in(
-            chandle,
-            0,
-            ctypes.c_uint32(1000000),
-            3,
-            1000,
-            1000,
-            0,
-            0,
-            ctypes.c_int32(0),
-            0
+        # maximum ADC count value
+        maxADC = ctypes.c_uint16(2**15)
+        # ddk: counts appears ready for 16 bit signed
+
+        # finish
+        self._open_unit()
+        self._set_channels()
+        if _config.is_self_triggered:
+            self._set_self_trigger()
+
+    def _open_unit(self):
+        from picosdk.ps2000 import ps2000
+        from picosdk.functions import assert_pico2000_ok
+
+        status = ps2000.ps2000_open_unit()
+        assert_pico2000_ok(status)
+        self.chandle = ctypes.c_int16(status)
+
+    def _set_channels(self):
+        from picosdk.ps2000 import ps2000
+        from picosdk.functions import assert_pico2000_ok, mV2adc, adc2mV
+
+        for c in self._channels:
+            status = ps2000.ps2000_set_channel(
+                self.chandle,
+                c.physical_channel,  # channel
+                c.enabled,  # enabled
+                c.coupling,  # dc (True) / ac (False)
+                c.range,  # 
+            )
+            for c in self._channels:
+                c.V_to_adc = lambda x: mV2adc(x / 1e3, c.range, maxADC)
+                c.adc_to_V = lambda x: adc2mV(x, c.range, maxADC) / 1e3
+            assert_pico2000_ok(status)
+
+    def _set_self_trigger(self):
+        from picosdk.ps2000 import ps2000
+        from picosdk.functions import assert_pico2000_ok
+        # awg
+        status = ps2000.ps2000_set_sig_gen_built_in(
+            self.chandle,
+            0,  # offset voltage (uV)
+            ctypes.c_uint32(1000000),  # peak-to-peak voltage (uV)
+            wave_type_to_code["square"],  # wavetype code
+            1000,  # start frequency (Hz)
+            1000,  # stop frequency (Hz)
+            0,  # increment frequency per `dwell_time`
+            0,  # dwell_time 
+            ctypes.c_int32(0),  # sweep type
+            0  # number of sweeps
         )
+        assert_pico2000_ok(status)
+        # trigger
+        trigger_channel = [c for c in self.channels if c.name==self.config.trigger_source][0]
+        status = ps2000.ps2000_set_trigger(
+            self.chandle,
+            trigger_channel.physical_channel,  # todo: convert to physical channel
+            trigger_channel.V_to_adc(0),  # threshold
+            0,  # direction (0=rising, 1=falling)
+            -50, # delay the delay, as a percentage of the requested number of data points, between
+            #      the trigger event and the start of the block
+            1  # ms to wait before collecting if no trigger recieved (0 = infinity)
+        )
+        assert_pico2000_ok(status)
+
 
     async def _measure(self):
         return {"channel": 0}
