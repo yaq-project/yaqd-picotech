@@ -64,13 +64,10 @@ class Channel:
     invert: bool = False
     signal_start: int
     signal_stop: int
-    signal_method: str
+    processing_method: str
     use_baseline: bool = False
     baseline_start: int
     baseline_stop: int
-    baseline_presample: int = 0
-    baseline_method: str
-    signal_presample: int = 0
 
     def volts_to_adc(self, x):
         return mV2adc(x / 1e3, range_to_code[self.range], maxADC)
@@ -240,7 +237,7 @@ class YaqdPicotechAdcTriggered(Sensor):
                 channel.sample_start:channel.sample_stop + 1
             ]
             signal_samples = channel.adc_to_V(signal_samples)
-            signal_shots = process_samples(channel.signal_method, signal_samples)
+            signal_shots = process_samples(channel.processing_method, signal_samples)
             # baseline
             if not channel.use_baseline:
                 baseline = 0
@@ -249,7 +246,7 @@ class YaqdPicotechAdcTriggered(Sensor):
                 channel.baseline_start:channel.baseline_stop + 1
             ]
             baseline_samples = channel.adc_to_V(baseline_samples)
-            baseline_shots = process_samples(channel.baseline_method, baseline_samples)
+            baseline_shots = process_samples(channel.processing_method, baseline_samples)
             # math
             shots[i] = signal_shots - baseline_shots
             if channel.invert:

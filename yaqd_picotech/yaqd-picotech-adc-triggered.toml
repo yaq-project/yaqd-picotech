@@ -25,12 +25,22 @@ fields = [
     {"name"="enabled", "type"="boolean", "default"=true},
     {"name"="coupling", "type"=["DC", "AC"], "default"="DC"}
 	{"name"="invert", "type"="boolean", "default"=false},
+	{"name"="processing_method", "type"="string"}
+	{"name"="signal_start", "type"=["null", "int"], "default"="__null__"},
+	{"name"="signal_stop", "type"=["null", "int"], "default"="__null__"},
 	{"name"="use_baseline", "type"="boolean", "default"=false},
 	{"name"="baseline_start", "type"=["null", "int"], "default"="__null__"},
 	{"name"="baseline_stop", "type"=["null", "int"], "default"="__null__"},
-	{"name"="baseline_presample", "type"="int", default=0},
-	{"name"="baseline_method", "type"="processing_method"}
 ]
+    signal_start: int
+    signal_stop: int
+    signal_method: str
+    use_baseline: bool
+    baseline_start: int
+    baseline_stop: int
+    baseline_method: str
+    baseline_presample: int = 0
+    signal_presample: int = 0
 
 [config]
 
