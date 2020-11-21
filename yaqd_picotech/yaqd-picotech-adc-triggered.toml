@@ -21,7 +21,6 @@ type = "record"
 name = "channel"
 fields = [
 	{"name"="name", "type"="string"},
-	{"name"="physical_channel", "type"="int"}
 	{"name"="range", "type"=["20 mV", "50 mV", "100 mV", "200 mV", "500 mV", "1 V", "2 V", "5 V", "10 V", "20 V"], "default"="5 V"},
     {"name"="enabled", "type"="boolean", "default"=true},
     {"name"="coupling", "type"=["DC", "AC"], "default"="DC"}
@@ -39,15 +38,6 @@ fields = [
 type = "string"
 default = "ps2000"
 
-[config.trigger_source]
-type = "string"
-default = "B"
-
-[config.is_self_triggered]
-type = "boolean"
-default = false
-doc = "Sets whether (True) or not (False) ADC is triggered by its own AWG.  Connect AWG to trigger_source."
-
 [config.time_base]
 type = "int"
 default = 5
@@ -61,7 +51,45 @@ doc = "Number of samples per trigger (per channel)."
 [config.oversample]
 type = "int"
 default = 16
-doc = "Average on board to increase vertical resolution.  Reduces output readings per trigger and increases time_interval in proportion."
+doc = "Average on board to increase vertical resolution. \
+Int between 1 and 256. \
+Reduces output readings per trigger and increases time_interval in proportion."
+
+[config.channels]
+type = "map"
+values = "channel"
+default = {}
+
+[config.trigger]
+
+	[config.trigger.name]
+	type = "string"
+	doc = "Name of the trigger channel."
+
+	[config.trigger.self_trigger]
+	type = "boolean"
+	default = false
+	doc = "Sets whether (True) or not (False) ADC is triggered by its own AWG. \
+	AWG generates 0-1 V square wave at 1 kHz. \
+	Connect AWG to trigger.physical_channel."
+
+	[config.trigger.threshold]
+	type = "int"
+	default = 500000
+	doc = "Voltage value (in uV) that triggers sampling."
+
+	[config.trigger.rising]
+	type = "boolean"
+	default = true
+	doc = "Trigger on rising (true) or falling (false) edge"
+
+	[config.trigger.delay]
+	type = "float"
+	default = -15
+	doc = "Delay, as a percentage of sampled data points, \
+	between trigger and start block (delay in [-100, 100]). \
+	0 means trigger event is first data point, \
+	-50 means trigger event is in the middle of block."
 
 
 [state]
@@ -69,11 +97,6 @@ doc = "Average on board to increase vertical resolution.  Reduces output reading
 [state.nshots]
 type = "int"
 default = 100
-
-[state.shots_processing_script]
-type = ["null", "string"]
-doc = "Path to script for shots processing."
-default = "__null__"
 
 [messages]
 
@@ -91,15 +114,3 @@ response = "int"
 [messages.set_nshots]
 doc = "Set the number of shots to acquire."
 request = [{"name"="nshots", "type"="int"}]
-
-[messages.get_sample_correspondances]
-doc = "Returns an array of integers of length nsamples. Zero indicates rest sample. Postive indicates channel. Negative indicates chopper."
-response = "ndarray"
-
-[messages.get_shots_processing_script]
-doc = "Get the path to the currently applied shots processing script."
-response = "string"
-
-[messages.set_shots_processing_script]
-doc = "Give the path to a shots processing script."
-request = [{"name"="path", "type"="string"}]

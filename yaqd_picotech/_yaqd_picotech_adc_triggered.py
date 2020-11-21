@@ -3,10 +3,27 @@ __all__ = ["YaqdPicotechAdcTriggered"]
 import asyncio
 import ctypes
 import numpy as np
+from time import sleep
 
 from picosdk.functions import adc2mV, mV2adc
 from typing import Dict, Any, List
 from yaqd_core import Sensor
+
+
+def process_samples(method, samples):
+    # samples arry shape: (sample, shot)
+    if method == "average":
+        shots = np.mean(samples, axis=0)
+    elif method == "sum":
+        shots = np.sum(samples, axis=0)
+    elif method == "min":
+        shots = np.min(samples, axis=0)
+    elif method == "max":
+        shots = np.max(samples, axis=0)
+    else:
+        raise KeyError("sample processing method not recognized")
+    return shots
+
 
 # todo: parse range codes based on psx000.PSx000_VOLTAGE_RANGE dict
 # ranges = [0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20]
@@ -45,6 +62,9 @@ class Channel:
     enabled: bool = True
     coupling: str = "DC"
     invert: bool = False
+    signal_start: int
+    signal_stop: int
+    signal_method: str
     use_baseline: bool = False
     baseline_start: int
     baseline_stop: int
@@ -70,7 +90,6 @@ class YaqdPicotechAdcTriggered(Sensor):
             channel = Channel(**d, physical_channel=k)
             self._channels.append(channel)
         self._channel_names = [c.name for c in self._channels if c.enabled]  # expected by parent
-        # todo: readout is in mV currently, so adjust accordingly
         self._channel_units = {k: "V" for k in self._channel_names}  # expected by parent
         self.timeInterval = ctypes.c_int32()
         self.timeUnits = ctypes.c_int32()
@@ -80,18 +99,21 @@ class YaqdPicotechAdcTriggered(Sensor):
         x += [c.physical_channel for c in self._channels]
         assert len(set(x)) == len(x)
 
-        assert self._config.model == "ps2000"
+        # only support ps2000 currently
+        assert self._config.model.lower() == "ps2000"
 
         # finish
         self._open_unit()
         self._set_channels()
         self._set_block_time()
         # trigger
-        if self._config.is_self_triggered:
-            self._set_awg_trigger()
+        if self._config.trigger.self_trigger:
+            self._set_awg()
         self._set_trigger()
+        self.measure()
 
     def _open_unit(self):
+        # TODO: async open
         from picosdk.ps2000 import ps2000
         from picosdk.functions import assert_pico2000_ok
 
@@ -116,25 +138,28 @@ class YaqdPicotechAdcTriggered(Sensor):
     def _set_trigger(self):
         from picosdk.ps2000 import ps2000
         from picosdk.functions import assert_pico2000_ok
-        trigger_channel = [c for c in self.channels if c.name==self.config.trigger_source][0]
+        trigger_channel = [c for c in self.channels if c.name==self._config.trigger.name][0]
         status = ps2000.ps2000_set_trigger(
             self.chandle,
             trigger_channel.physical_channel,  # todo: convert to physical channel
-            trigger_channel.V_to_adc(0),  # threshold
-            0,  # direction (0=rising, 1=falling)
-            -50, # delay the delay, as a percentage of the requested number of data points, between
+            trigger_channel.V_to_adc(self._config.trigger.threshold),  # threshold
+            int(self._config.rising),  # direction (0=rising, 1=falling)
+            self._config.trigger.delay, # delay the delay, as a percentage of the requested number of data points, between
             #      the trigger event and the start of the block
             5  # ms to wait before collecting if no trigger recieved (0 = infinity)
         )
         assert_pico2000_ok(status)
 
-    def _set_awg_trigger(self):
+    def _set_awg(self):
+        """
+        generate 1 V p-p square wave at 1 kHz
+        """
         from picosdk.ps2000 import ps2000
         from picosdk.functions import assert_pico2000_ok
         # awg
         status = ps2000.ps2000_set_sig_gen_built_in(
             self.chandle,
-            0,  # offset voltage (uV)
+            500000,  # offset voltage (uV)
             ctypes.c_uint32(1000000),  # peak-to-peak voltage (uV)
             wave_type_to_code["square"],  # wavetype code
             1000,  # start frequency (Hz)
@@ -146,129 +171,158 @@ class YaqdPicotechAdcTriggered(Sensor):
         )
         assert_pico2000_ok(status)
 
-    def _set_block_time(self, timebase, max_samples):
+    def _set_block_time(self):
         from picosdk.ps2000 import ps2000
         from picosdk.functions import assert_pico2000_ok
 
         maxSamplesReturn = ctypes.c_int32()
         oversample = ctypes.c_int16(self._config.oversample)
+        time_interval = ctypes.c_int32()
+        time_units = ctypes.c_int32()
+
         status = ps2000.ps2000_get_timebase(
             self.chandle,  # handle
-            self._config.timebase,  # 0 is fastest, 2x slower each increment
+            self._config.timebase,  # 0 is fastest, 2x slower each integer increment
             self._config.max_samples,  # number of readings
-            ctypes.byref(self.timeInterval),  # pointer to time interval between readings (ns)
-            ctypes.byref(self.timeUnits),  # pointer to time units
+            ctypes.byref(time_interval),  # pointer to time interval between readings (ns)
+            ctypes.byref(time_units),  # pointer to time units
             oversample,  # on board averaging of concecutive `oversample` timepoints (increase resolution)
             ctypes.byref(maxSamplesReturn) # pointer to actual number of available samples
         )
+        self.time_interval = time_interval.value
+        self.time_units = time_units.value
+        """
+        # ddk: time according to picotech example, but I believe spacing is off by 1/nsamples...
+        self.time = np.linspace(
+            0,
+            self._config.max_samples * self.time_interval,
+            self._config.max_samples
+        ) / 1e6
+        """
+        self.time = np.arange(self._config.max_samples) * self.time_interval
+        # offset for delay
+        self.time += self.time.max() * self._config.delay / 100
         # todo: readout params on failure
         assert_pico2000_ok(status)
 
-    def _measure_samples(self):
+    def _create_task(self):
         from picosdk.ps2000 import ps2000
         from picosdk.functions import assert_pico2000_ok
 
-        timeIndisposedms = ctypes.c_int32()
+        time_indisposed_ms = ctypes.c_int32()
+        # pointer to approximate time DAQ takes to collect data
+        # i.e. (sample interval) x (number of points required)
         status = ps2000.ps2000_run_block(
             self.chandle,
             self._config.max_samples,
             self._config.timebase,
             ctypes.c_int16(self._config.oversample),
-            ctypes.byref(timeIndisposedms)
+            ctypes.byref(time_indisposed_ms)
         )
         assert_pico2000_ok(status)
+        self.time_indisposed = time_indisposed_ms.value / 1e3
 
-        # Check for data collection to finish
-        ready = ctypes.c_int16(0)
-        check = ctypes.c_int16(0)
-        while ready.value == check.value:
-            status["isReady"] = ps2000.ps2000_ready(self.chandle)
-            ready = ctypes.c_int16(status["isReady"])
+    async def _measure(self):
+        # todo:  run_in_executor
+        samples = await self._loop.run_in_executor(None, self._measure_samples)
+        shots = np.empty(
+            [
+                len([c for c in self._channels if c.enabled]),
+                self._state["nshots"],
+            ]
+        )
+        # channels
+        for channel in enumerate(self._channels):
+            if not channel.enabled:
+                continue
+            # signal
+            signal_samples = samples[channel.name][
+                channel.sample_start:channel.sample_stop + 1
+            ]
+            signal_samples = channel.adc_to_V(signal_samples)
+            signal_shots = process_samples(channel.signal_method, signal_samples)
+            # baseline
+            if not channel.use_baseline:
+                baseline = 0
+                continue
+            baseline_samples = samples[channel.name][
+                channel.baseline_start:channel.baseline_stop + 1
+            ]
+            baseline_samples = channel.adc_to_V(baseline_samples)
+            baseline_shots = process_samples(channel.baseline_method, baseline_samples)
+            # math
+            shots[i] = signal_shots - baseline_shots
+            if channel.invert:
+                shots[i] *= -1
+        # finish
+        self._samples = samples
+        self._shots = shots
+        return out
+
+    def _measure_samples(self):
+        """loop through shots, return aggregate
+        """
+        samples = {
+            name: np.zeros(
+                (self._config.nshots, self._config.max_samples),
+                dtype=np.float
+            ) for name in self._channel_names
+        }
+        i = 0
+        self._create_task()
+        while i < self._config.nshots:
+            ready = ctypes.c_int16(0)
+            check = ctypes.c_int16(0)
+            for wait in np.geomspace(self.time_indisposed, 60, num=15):
+                status = ps2000.ps2000_ready(self.chandle)
+                ready = ctypes.c_int16(status)
+                if ready != check:
+                    break
+                else:
+                    sleep(wait)
+            else:
+                # timeout; kill acquisition
+                # todo: call ps2000_stop, re-initialize
+                from picosdk.ps2000 import ps2000
+                from picosdk.functions import assert_pico2000_ok
+
+                status = ps2000.ps2000_stop()
+                assert_pico2000_ok(status)
+                return self._measure_samples  # non-ideal: restarts all nshots if one fails
+            sample = self._measure_sample()
+            for name in self._channel_names:
+                samples[name][i] = sample[name]
+            self._create_task()
+            i += 1
+        return samples
+
+    def _measure_sample(self):
+        """
+        retrieve samples from single shot
+        """
+        from picosdk.ps2000 import ps2000
+        from picosdk.functions import assert_pico2000_ok
 
         # create buffers for data
         buffers = [None] * 4
-        for c in range(len(self._channels)):
+        for c in self._channels:
             if c.enable:
-                buffers[c.physical_channel] = (ctypes.c_int16 * self._config._max_samples)()
-        oversample = ctypes.c_int16(self._config.oversample)
+                buffers[c.physical_channel] = (
+                    ctypes.c_int16 * (self._config.max_samples
+                )()
+        overflow = ctypes.c_int16()  # bit pattern on whether overflow has occurred
+
         status = ps2000.ps2000_get_values(
             self.chandle, # handle
             # pointers to channel buffers
             *[ctypes.byref(b) if b is not None else None for b in buffers],
-            ctypes.byref(oversample),  # pointer to overflow
+            ctypes.byref(overflow),  # pointer to overflow
             ctypes.c_int32(self._config.max_samples)  # number of values
         )
         assert_pico2000_ok(status)
 
         # todo: match physical channel to buffer; currently assumes order preserved
-        samples = {c.name: c.adc_to_V(b) for c, b in zip(self._channels, buffers)}
-        return samples
+        sample = {c.name: b for c, b in zip(self._channels, buffers)}
+        # samples shape:  nsamples, shots
+        return sample
 
-    async def _measure(self):
-        pass
-        # just guide code: verbatim copied from yaq-ni
-        # -----------------------------------------------------------------------------------------
-        if False:
-            samples = await self._loop.run_in_executor(None, self._measure_samples)
-            shots = np.empty(
-                [
-                    len(self._channel_names) + len([c for c in self._choppers if c.enabled]),
-                    self._state["nshots"],
-                ]
-            )
-            # channels
-            i = 0
-            for channel_index, channel in enumerate(self._channels):
-                if not channel.enabled:
-                    continue
-                # signal
-                idxs = self._sample_correspondances == channel_index + 1
-                idxs[channel.signal_stop + 1 :] = False
-                signal_samples = samples[idxs]
-                signal_shots = process_samples(channel.signal_method, signal_samples)
-                # baseline
-                if not channel.use_baseline:
-                    baseline = 0
-                    continue
-                idxs = self._sample_correspondances == channel_index + 1
-                idxs[: channel.signal_stop + 1] = False
-                baseline_samples = samples[idxs]
-                baseline_shots = process_samples(channel.baseline_method, baseline_samples)
-                # math
-                shots[i] = signal_shots - baseline_shots
-                if channel.invert:
-                    shots[i] *= -1
-                i += 1
-            # choppers
-            for chopper in self._choppers:
-                if not chopper.enabled:
-                    continue
-                cutoff = 1.0  # volts
-                out = samples[chopper.index]
-                out[out <= cutoff] = -1.0
-                out[out > cutoff] = 1.0
-                if chopper.invert:
-                    out *= -1
-                shots[i] = out
-                i += 1
-            # process
-            path = self._config["shots_processing_path"]
-            name = os.path.basename(path).split(".")[0]
-            directory = os.path.dirname(path)
-            f, p, d = imp.find_module(name, [directory])
-            processing_module = imp.load_module(name, f, p, d)
-            kinds = ["channel" for _ in self._channel_names] + [
-                "chopper" for c in self._choppers if c.enabled
-            ]
-            names = self._channel_names + [c.name for c in self._choppers if c.enabled]
-            out = processing_module.process(shots, names, kinds)
-            if len(out) == 3:
-                out, out_names, out_signed = out
-            else:
-                out, out_names = out
-                out_signed = False
-            # finish
-            self._samples = samples
-            self._shots = shots
-            out = {k: v for k, v in zip(self._channel_names, out)}
-            return out
