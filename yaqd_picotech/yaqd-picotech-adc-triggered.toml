@@ -1,3 +1,5 @@
+# refer to toml.io
+
 protocol = "yaqd-picotech-adc-triggered"
 doc = ""
 traits = ["is-daemon", "is-sensor"]
@@ -23,24 +25,15 @@ fields = [
 	{"name"="name", "type"="string"},
 	{"name"="range", "type"=["20 mV", "50 mV", "100 mV", "200 mV", "500 mV", "1 V", "2 V", "5 V", "10 V", "20 V"], "default"="5 V"},
     {"name"="enabled", "type"="boolean", "default"=true},
-    {"name"="coupling", "type"=["DC", "AC"], "default"="DC"}
+    {"name"="coupling", "type"=["DC", "AC"], "default"="DC"},
 	{"name"="invert", "type"="boolean", "default"=false},
-	{"name"="processing_method", "type"="string"}
+	{"name"="processing_method", "type"="processing_method"},
 	{"name"="signal_start", "type"=["null", "int"], "default"="__null__"},
 	{"name"="signal_stop", "type"=["null", "int"], "default"="__null__"},
 	{"name"="use_baseline", "type"="boolean", "default"=false},
 	{"name"="baseline_start", "type"=["null", "int"], "default"="__null__"},
 	{"name"="baseline_stop", "type"=["null", "int"], "default"="__null__"},
 ]
-    signal_start: int
-    signal_stop: int
-    signal_method: str
-    use_baseline: bool
-    baseline_start: int
-    baseline_stop: int
-    baseline_method: str
-    baseline_presample: int = 0
-    signal_presample: int = 0
 
 [config]
 
@@ -61,14 +54,27 @@ doc = "Number of samples per trigger (per channel)."
 [config.oversample]
 type = "int"
 default = 16
-doc = "Average on board to increase vertical resolution. \
+doc = """\
+Average on board to increase vertical resolution. \
 Int between 1 and 256. \
-Reduces output readings per trigger and increases time_interval in proportion."
+Reduces output readings per trigger and increases time_interval in proportion.\
+"""
 
 [config.channels]
 type = "map"
 values = "channel"
-default = {}
+
+	[[config.channels.default]]
+	name = "A"
+	signal_start = 0
+	signal_stop = 20
+	use_baseline = false
+
+	[[config.channels.default]]
+	name = "B"
+	signal_start = 0
+	signal_stop = 20
+	use_baseline = false
 
 [config.trigger]
 
@@ -79,9 +85,10 @@ default = {}
 	[config.trigger.self_trigger]
 	type = "boolean"
 	default = false
-	doc = "Sets whether (True) or not (False) ADC is triggered by its own AWG. \
-	AWG generates 0-1 V square wave at 1 kHz. \
-	Connect AWG to trigger.physical_channel."
+	doc = """\
+	Sets whether (True) or not (False) ADC is triggered by its own AWG. \
+	AWG generates 0-1 V square wave at 1 kHz. Connect AWG to trigger.physical_channel.\
+	"""
 
 	[config.trigger.threshold]
 	type = "int"
@@ -96,11 +103,12 @@ default = {}
 	[config.trigger.delay]
 	type = "float"
 	default = -15
-	doc = "Delay, as a percentage of sampled data points, \
-	between trigger and start block (delay in [-100, 100]). \
-	0 means trigger event is first data point, \
-	-50 means trigger event is in the middle of block."
-
+	doc = """
+	Delay, as a percentage of sampled data points, between \
+	trigger and start block (delay in [-100, 100]). \
+	0 means trigger event is first data point, -50 means trigger \
+	event is in the middle of block.\
+	"""
 
 [state]
 

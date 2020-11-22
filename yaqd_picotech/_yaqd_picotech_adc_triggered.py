@@ -88,8 +88,6 @@ class YaqdPicotechAdcTriggered(Sensor):
             self._channels.append(channel)
         self._channel_names = [c.name for c in self._channels if c.enabled]  # expected by parent
         self._channel_units = {k: "V" for k in self._channel_names}  # expected by parent
-        self.timeInterval = ctypes.c_int32()
-        self.timeUnits = ctypes.c_int32()
 
         # check that all physical channels are unique
         x = []
@@ -305,7 +303,7 @@ class YaqdPicotechAdcTriggered(Sensor):
         for c in self._channels:
             if c.enable:
                 buffers[c.physical_channel] = (
-                    ctypes.c_int16 * (self._config.max_samples
+                    ctypes.c_int16 * self._config.max_samples
                 )()
         overflow = ctypes.c_int16()  # bit pattern on whether overflow has occurred
 
@@ -323,3 +321,16 @@ class YaqdPicotechAdcTriggered(Sensor):
         # samples shape:  nsamples, shots
         return sample
 
+    def get_measured_samples(self):
+        return self._samples
+
+    def get_measured_shots(self):
+        return self._shots
+
+    def get_nshots(self):
+        return self._state["nshots"]
+
+    def set_nshots(self, nshots):
+        """Set number of shots."""
+        assert nshots > 0
+        self.nshots = nshots
