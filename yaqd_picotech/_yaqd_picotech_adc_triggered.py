@@ -3,11 +3,12 @@ __all__ = ["YaqdPicotechAdcTriggered"]
 import asyncio
 import ctypes
 import numpy as np
+from dataclasses import dataclass
 from time import sleep
 
 from picosdk.functions import adc2mV, mV2adc
 from typing import Dict, Any, List
-from yaqd_core import Sensor
+from yaqd_core import IsSensor, IsDaemon
 
 
 def process_samples(method, samples):
@@ -53,21 +54,20 @@ wave_type_to_code = {
 maxADC = ctypes.c_uint16(2**15)
 # ddk: ignore chopper class for now; only two physical channels to test
 
-
 @dataclass
 class Channel:
     name: str
-    range: str = "1 V"
     physical_channel: int
+    signal_start: int
+    signal_stop: int
+    processing_method: str = "average"
+    baseline_start: int = None
+    baseline_stop: int = None
+    range: str = "5 V"
     enabled: bool = True
     coupling: str = "DC"
     invert: bool = False
-    signal_start: int
-    signal_stop: int
-    processing_method: str
     use_baseline: bool = False
-    baseline_start: int
-    baseline_stop: int
 
     def volts_to_adc(self, x):
         return mV2adc(x / 1e3, range_to_code[self.range], maxADC)
@@ -76,14 +76,14 @@ class Channel:
         return adc2mV(x, range_to_code[self.range], maxADC) / 1e3
 
 
-class YaqdPicotechAdcTriggered(Sensor):
+class YaqdPicotechAdcTriggered(IsSensor, IsDaemon):
     _kind = "yaqd-picotech-adc-triggered"
 
     def __init__(self, name, config, config_filepath):
         super().__init__(name, config, config_filepath)
 
         self._channels = []
-        for k, d in self._config["channels"].items():
+        for k, d in enumerate(self._config["channels"]):
             channel = Channel(**d, physical_channel=k)
             self._channels.append(channel)
         self._channel_names = [c.name for c in self._channels if c.enabled]  # expected by parent
@@ -95,20 +95,19 @@ class YaqdPicotechAdcTriggered(Sensor):
         assert len(set(x)) == len(x)
 
         # only support ps2000 currently
-        assert self._config.model.lower() == "ps2000"
+        assert self._config["model"].lower() == "ps2000"
 
         # finish
         self._open_unit()
         self._set_channels()
         self._set_block_time()
         # trigger
-        if self._config.trigger.self_trigger:
+        if self._config["trigger_self_trigger"]:
             self._set_awg()
         self._set_trigger()
         self.measure()
 
     def _open_unit(self):
-        # TODO: async open
         from picosdk.ps2000 import ps2000
         from picosdk.functions import assert_pico2000_ok
 
@@ -121,26 +120,27 @@ class YaqdPicotechAdcTriggered(Sensor):
         from picosdk.functions import assert_pico2000_ok
 
         for c in self._channels:
+            print(c.name)
+            print(self.chandle, c.physical_channel, c.enabled, c.coupling, range_to_code[c.range])
             status = ps2000.ps2000_set_channel(
                 self.chandle,
                 c.physical_channel,  # channel
                 c.enabled,  # enabled
-                c.coupling,  # dc (True) / ac (False)
-                range_to_code[c.range],  # range code
+                c.coupling == "DC",  # dc (True) / ac (False)
+                range_to_code[c.range],
             )
             assert_pico2000_ok(status)
 
     def _set_trigger(self):
         from picosdk.ps2000 import ps2000
         from picosdk.functions import assert_pico2000_ok
-        trigger_channel = [c for c in self.channels if c.name==self._config.trigger.name][0]
+        trigger_channel = [c for c in self._channels if c.name==self._config["trigger_name"]][0]
         status = ps2000.ps2000_set_trigger(
             self.chandle,
             trigger_channel.physical_channel,  # todo: convert to physical channel
-            trigger_channel.V_to_adc(self._config.trigger.threshold),  # threshold
-            int(self._config.rising),  # direction (0=rising, 1=falling)
-            self._config.trigger.delay, # delay the delay, as a percentage of the requested number of data points, between
-            #      the trigger event and the start of the block
+            trigger_channel.volts_to_adc(self._config["trigger_threshold"]),  # threshold
+            int(self._config["trigger_rising"]),  # direction (0=rising, 1=falling)
+            self._config["trigger_delay"],
             5  # ms to wait before collecting if no trigger recieved (0 = infinity)
         )
         assert_pico2000_ok(status)
@@ -171,14 +171,14 @@ class YaqdPicotechAdcTriggered(Sensor):
         from picosdk.functions import assert_pico2000_ok
 
         maxSamplesReturn = ctypes.c_int32()
-        oversample = ctypes.c_int16(self._config.oversample)
+        oversample = ctypes.c_int16(self._config["oversample"])
         time_interval = ctypes.c_int32()
         time_units = ctypes.c_int32()
 
         status = ps2000.ps2000_get_timebase(
             self.chandle,  # handle
-            self._config.timebase,  # 0 is fastest, 2x slower each integer increment
-            self._config.max_samples,  # number of readings
+            self._config["timebase"],  # 0 is fastest, 2x slower each integer increment
+            self._config["max_samples"],  # number of readings
             ctypes.byref(time_interval),  # pointer to time interval between readings (ns)
             ctypes.byref(time_units),  # pointer to time units
             oversample,  # on board averaging of concecutive `oversample` timepoints (increase resolution)
@@ -194,9 +194,9 @@ class YaqdPicotechAdcTriggered(Sensor):
             self._config.max_samples
         ) / 1e6
         """
-        self.time = np.arange(self._config.max_samples) * self.time_interval
+        self.time = np.arange(self._config["max_samples"], dtype=float) * self.time_interval
         # offset for delay
-        self.time += self.time.max() * self._config.delay / 100
+        self.time += self.time.max() * self._config["trigger_delay"] / 100
         # todo: readout params on failure
         assert_pico2000_ok(status)
 
@@ -209,9 +209,9 @@ class YaqdPicotechAdcTriggered(Sensor):
         # i.e. (sample interval) x (number of points required)
         status = ps2000.ps2000_run_block(
             self.chandle,
-            self._config.max_samples,
-            self._config.timebase,
-            ctypes.c_int16(self._config.oversample),
+            self._config["max_samples"],
+            self._config["timebase"],
+            ctypes.c_int16(self._config["oversample"]),
             ctypes.byref(time_indisposed_ms)
         )
         assert_pico2000_ok(status)
@@ -227,7 +227,7 @@ class YaqdPicotechAdcTriggered(Sensor):
             ]
         )
         # channels
-        for channel in enumerate(self._channels):
+        for i, channel in enumerate(self._channels):
             if not channel.enabled:
                 continue
             # signal
@@ -252,20 +252,20 @@ class YaqdPicotechAdcTriggered(Sensor):
         # finish
         self._samples = samples
         self._shots = shots
-        return out
+        return shots
 
     def _measure_samples(self):
         """loop through shots, return aggregate
         """
         samples = {
             name: np.zeros(
-                (self._config.nshots, self._config.max_samples),
+                (self._config["nshots"], self._config["max_samples"]),
                 dtype=np.float
             ) for name in self._channel_names
         }
         i = 0
         self._create_task()
-        while i < self._config.nshots:
+        while i < self._config["nshots"]:
             ready = ctypes.c_int16(0)
             check = ctypes.c_int16(0)
             for wait in np.geomspace(self.time_indisposed, 60, num=15):
@@ -303,7 +303,7 @@ class YaqdPicotechAdcTriggered(Sensor):
         for c in self._channels:
             if c.enable:
                 buffers[c.physical_channel] = (
-                    ctypes.c_int16 * self._config.max_samples
+                    ctypes.c_int16 * self._config["max_samples"]
                 )()
         overflow = ctypes.c_int16()  # bit pattern on whether overflow has occurred
 
@@ -320,6 +320,9 @@ class YaqdPicotechAdcTriggered(Sensor):
         sample = {c.name: b for c, b in zip(self._channels, buffers)}
         # samples shape:  nsamples, shots
         return sample
+
+    def get_channel_units(self):
+        return "V"
 
     def get_measured_samples(self):
         return self._samples

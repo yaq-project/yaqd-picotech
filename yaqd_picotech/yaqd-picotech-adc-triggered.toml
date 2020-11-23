@@ -38,13 +38,13 @@ type = "record"
 name = "channel"
 fields = [
 	{"name"="name", "type"="string"},
-	{"name"="range", "type"="adc_range"},
+	{"name"="signal_start", "type"=["null", "int"]},
+	{"name"="signal_stop", "type"=["null", "int"]},
+	{"name"="range", "type"="adc_range", default="5 V"},
     {"name"="enabled", "type"="boolean", "default"=true},
-    {"name"="coupling", "type"="adc_coupling"},
+    {"name"="coupling", "type"="adc_coupling", "default"="DC"},
 	{"name"="invert", "type"="boolean", "default"=false},
-	{"name"="processing_method", "type"="processing_method"},
-	{"name"="signal_start", "type"=["null", "int"], "default"="__null__"},
-	{"name"="signal_stop", "type"=["null", "int"], "default"="__null__"},
+	{"name"="processing_method", "type"="processing_method", "default"="average"},
 	{"name"="use_baseline", "type"="boolean", "default"=false},
 	{"name"="baseline_start", "type"=["null", "int"], "default"="__null__"},
 	{"name"="baseline_stop", "type"=["null", "int"], "default"="__null__"},
@@ -60,7 +60,7 @@ default = "picotech"
 type = "string"
 default = "ps2000"
 
-[config.time_base]
+[config.timebase]
 type = "int"
 default = 5
 doc = "Time step between measurements is `10 ns * 2^(time_base)`."

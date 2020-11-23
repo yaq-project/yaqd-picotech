@@ -52,7 +52,7 @@
                 "string"
             ]
         },
-        "time_base": {
+        "timebase": {
             "default": 5,
             "doc": "Time step between measurements is `10 ns * 2^(time_base)`.",
             "type": "int"
@@ -271,6 +271,21 @@
                     "type": "string"
                 },
                 {
+                    "name": "signal_start",
+                    "type": [
+                        "null",
+                        "int"
+                    ]
+                },
+                {
+                    "name": "signal_stop",
+                    "type": [
+                        "null",
+                        "int"
+                    ]
+                },
+                {
+                    "default": "5 V",
                     "name": "range",
                     "type": "adc_range"
                 },
@@ -280,6 +295,7 @@
                     "type": "boolean"
                 },
                 {
+                    "default": "DC",
                     "name": "coupling",
                     "type": "adc_coupling"
                 },
@@ -289,24 +305,9 @@
                     "type": "boolean"
                 },
                 {
+                    "default": "average",
                     "name": "processing_method",
                     "type": "processing_method"
-                },
-                {
-                    "default": "__null__",
-                    "name": "signal_start",
-                    "type": [
-                        "null",
-                        "int"
-                    ]
-                },
-                {
-                    "default": "__null__",
-                    "name": "signal_stop",
-                    "type": [
-                        "null",
-                        "int"
-                    ]
                 },
                 {
                     "default": false,
