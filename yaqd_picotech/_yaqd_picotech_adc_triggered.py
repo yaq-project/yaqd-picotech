@@ -1,4 +1,4 @@
-__all__ = ["YaqdPicotechAdcTriggered"]
+__all__ = ["PicotechAdcTriggered"]
 
 import asyncio
 import ctypes
@@ -76,9 +76,9 @@ class Channel:
         return adc2mV(x, range_to_code[self.range], maxADC) / 1e3
 
 
-class YaqdPicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
+class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
     # ddk:  order matters for base classes?
-    _kind = "yaqd-picotech-adc-triggered"
+    _kind = "picotech-adc-triggered"
 
     def __init__(self, name, config, config_filepath):
         super().__init__(name, config, config_filepath)
@@ -121,8 +121,6 @@ class YaqdPicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
         from picosdk.functions import assert_pico2000_ok
 
         for c in self._channels:
-            print(c.name)
-            print(self.chandle, c.physical_channel, c.enabled, c.coupling, range_to_code[c.range])
             status = ps2000.ps2000_set_channel(
                 self.chandle,
                 c.physical_channel,  # channel

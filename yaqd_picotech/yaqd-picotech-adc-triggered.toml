@@ -1,7 +1,7 @@
 # https://traits.yaq.fyi/
 # refer to toml.io
 
-protocol = "yaqd-picotech-adc-triggered"
+protocol = "picotech-adc-triggered"
 doc = ""
 traits = ["is-daemon", "is-sensor", "has-measure-trigger"]
 hardware = ["picotech:ps2000"]
