@@ -1,3 +1,4 @@
+# https://traits.yaq.fyi/
 # refer to toml.io
 
 protocol = "yaqd-picotech-adc-triggered"
@@ -8,6 +9,8 @@ hardware = ["picotech:ps2000"]
 [links]
 source = "https://gitlab.com/yaq/yaqd-picotech"
 bugtracker = "https://gitlab.com/yaq/yaqd-picotech/-/issues"
+windows_c_libraries = "https://www.picotech.com/downloads"
+linux_c_libraries = "https://www.picotech.com/downloads/linux"
 
 [installation]
 PyPI = "https://pypi.org/project/yaqd-picotech"
