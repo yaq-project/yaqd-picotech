@@ -1,0 +1,5 @@
+[test]
+port = 39003
+trigger_self_trigger = true
+trigger_name = "A"
+loop_at_startup = true

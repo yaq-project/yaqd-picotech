@@ -45,8 +45,7 @@ range_to_code = {
 wave_type_to_code = {
     k: i for i, k in enumerate([
         "sine", "square", "triangle", "ramp_up", "ramp_down", "dc"
-        ]
-    )
+    ])
 }
 
 # maximum ADC count value

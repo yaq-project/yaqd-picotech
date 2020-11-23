@@ -2,7 +2,7 @@
 # refer to toml.io
 
 protocol = "picotech-adc-triggered"
-doc = ""
+doc = "Triggered Picotech Oscilloscope"
 traits = ["is-daemon", "is-sensor", "has-measure-trigger"]
 hardware = ["picotech:ps2000"]
 

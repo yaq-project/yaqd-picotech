@@ -30,8 +30,8 @@ mypy:
 entry:
   stage: test
   script:
-    - yaqd-yaqd-picotech-adc-triggered --version
-    - yaqd-yaqd-picotech-adc-triggered -h
+    - yaqd-picotech-adc-triggered --version
+    - yaqd-picotech-adc-triggered -h
 traits:
   stage: test
   script:
