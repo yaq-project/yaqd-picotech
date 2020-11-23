@@ -3,7 +3,7 @@
 
 protocol = "yaqd-picotech-adc-triggered"
 doc = ""
-traits = ["is-daemon", "is-sensor"]
+traits = ["is-daemon", "is-sensor", "has-measure-trigger"]
 hardware = ["picotech:ps2000"]
 
 [links]

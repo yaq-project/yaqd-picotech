@@ -8,7 +8,7 @@ from time import sleep
 
 from picosdk.functions import adc2mV, mV2adc
 from typing import Dict, Any, List
-from yaqd_core import IsSensor, IsDaemon
+from yaqd_core import IsSensor, IsDaemon, HasMeasureTrigger
 
 
 def process_samples(method, samples):
@@ -76,7 +76,8 @@ class Channel:
         return adc2mV(x, range_to_code[self.range], maxADC) / 1e3
 
 
-class YaqdPicotechAdcTriggered(IsSensor, IsDaemon):
+class YaqdPicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
+    # ddk:  order matters for base classes?
     _kind = "yaqd-picotech-adc-triggered"
 
     def __init__(self, name, config, config_filepath):
@@ -125,7 +126,7 @@ class YaqdPicotechAdcTriggered(IsSensor, IsDaemon):
             status = ps2000.ps2000_set_channel(
                 self.chandle,
                 c.physical_channel,  # channel
-                c.enabled,  # enabled
+                c.enabled,  # enabledd
                 c.coupling == "DC",  # dc (True) / ac (False)
                 range_to_code[c.range],
             )
@@ -220,21 +221,17 @@ class YaqdPicotechAdcTriggered(IsSensor, IsDaemon):
     async def _measure(self):
         # todo:  run_in_executor
         samples = await self._loop.run_in_executor(None, self._measure_samples)
-        shots = np.empty(
-            [
-                len([c for c in self._channels if c.enabled]),
-                self._state["nshots"],
-            ]
-        )
+        shots = {
+            c.name: np.empty((self._state["nshots"])) for c in self._channels if c.enabled
+        }
         # channels
         for i, channel in enumerate(self._channels):
             if not channel.enabled:
                 continue
             # signal
             signal_samples = samples[channel.name][
-                channel.sample_start:channel.sample_stop + 1
+                channel.signal_start:channel.signal_stop + 1
             ]
-            signal_samples = channel.adc_to_V(signal_samples)
             signal_shots = process_samples(channel.processing_method, signal_samples)
             # baseline
             if not channel.use_baseline:
@@ -243,7 +240,7 @@ class YaqdPicotechAdcTriggered(IsSensor, IsDaemon):
             baseline_samples = samples[channel.name][
                 channel.baseline_start:channel.baseline_stop + 1
             ]
-            baseline_samples = channel.adc_to_V(baseline_samples)
+            baseline_samples = channel.adc_to_volts(np.array(baseline_samples))
             baseline_shots = process_samples(channel.processing_method, baseline_samples)
             # math
             shots[i] = signal_shots - baseline_shots
@@ -257,15 +254,18 @@ class YaqdPicotechAdcTriggered(IsSensor, IsDaemon):
     def _measure_samples(self):
         """loop through shots, return aggregate
         """
+        from picosdk.ps2000 import ps2000
+        from picosdk.functions import assert_pico2000_ok
+
         samples = {
             name: np.zeros(
-                (self._config["nshots"], self._config["max_samples"]),
+                (self._state["nshots"], self._config["max_samples"]),
                 dtype=np.float
             ) for name in self._channel_names
         }
         i = 0
         self._create_task()
-        while i < self._config["nshots"]:
+        while i < self._state["nshots"]:
             ready = ctypes.c_int16(0)
             check = ctypes.c_int16(0)
             for wait in np.geomspace(self.time_indisposed, 60, num=15):
@@ -301,7 +301,7 @@ class YaqdPicotechAdcTriggered(IsSensor, IsDaemon):
         # create buffers for data
         buffers = [None] * 4
         for c in self._channels:
-            if c.enable:
+            if c.enabled:
                 buffers[c.physical_channel] = (
                     ctypes.c_int16 * self._config["max_samples"]
                 )()
@@ -312,7 +312,7 @@ class YaqdPicotechAdcTriggered(IsSensor, IsDaemon):
             # pointers to channel buffers
             *[ctypes.byref(b) if b is not None else None for b in buffers],
             ctypes.byref(overflow),  # pointer to overflow
-            ctypes.c_int32(self._config.max_samples)  # number of values
+            ctypes.c_int32(self._config["max_samples"])  # number of values
         )
         assert_pico2000_ok(status)
 
@@ -336,4 +336,4 @@ class YaqdPicotechAdcTriggered(IsSensor, IsDaemon):
     def set_nshots(self, nshots):
         """Set number of shots."""
         assert nshots > 0
-        self.nshots = nshots
+        self._state["nshots"] = nshots

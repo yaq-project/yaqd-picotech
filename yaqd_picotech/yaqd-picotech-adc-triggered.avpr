@@ -18,6 +18,12 @@
             "type": "map",
             "values": "channel"
         },
+        "loop_at_startup": {
+            "default": false,
+            "doc": "If set to true, the daemon will begin to loop measure as soon as it starts.",
+            "origin": "has-measure-trigger",
+            "type": "boolean"
+        },
         "make": {
             "default": "picotech",
             "origin": "is-daemon",
@@ -191,6 +197,18 @@
                 ]
             }
         },
+        "measure": {
+            "doc": "Initiate a measurement. Returns integer, measurement ID.",
+            "origin": "has-measure-trigger",
+            "request": [
+                {
+                    "default": false,
+                    "name": "loop",
+                    "type": "boolean"
+                }
+            ],
+            "response": "int"
+        },
         "set_nshots": {
             "doc": "Set the number of shots to acquire.",
             "request": [
@@ -212,6 +230,12 @@
                 }
             ],
             "response": "null"
+        },
+        "stop_looping": {
+            "doc": "Stop looping measurement.",
+            "origin": "has-measure-trigger",
+            "request": [],
+            "response": "null"
         }
     },
     "protocol": "yaqd-picotech-adc-triggered",
@@ -223,8 +247,9 @@
         }
     },
     "traits": [
-        "is-daemon",
-        "is-sensor"
+        "has-measure-trigger",
+        "is-sensor",
+        "is-daemon"
     ],
     "types": [
         {
