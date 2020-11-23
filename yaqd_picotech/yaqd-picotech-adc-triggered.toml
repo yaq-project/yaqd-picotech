@@ -19,13 +19,25 @@ symbols = ["average", "sum", "min", "max"]
 default = "average"
 
 [[types]]
+type = "enum"
+name = "adc_range"
+symbols = ["20 mV", "50 mV", "100 mV", "200 mV", "500 mV", "1 V", "2 V", "5 V", "10 V", "20 V"]
+default = "5 V"
+
+[[types]]
+type = "enum"
+name = "adc_coupling"
+symbols = ["DC", "AC"]
+default = "DC"
+
+[[types]]
 type = "record"
 name = "channel"
 fields = [
 	{"name"="name", "type"="string"},
-	{"name"="range", "type"=["20 mV", "50 mV", "100 mV", "200 mV", "500 mV", "1 V", "2 V", "5 V", "10 V", "20 V"], "default"="5 V"},
+	{"name"="range", "type"="adc_range"},
     {"name"="enabled", "type"="boolean", "default"=true},
-    {"name"="coupling", "type"=["DC", "AC"], "default"="DC"},
+    {"name"="coupling", "type"="adc_coupling"},
 	{"name"="invert", "type"="boolean", "default"=false},
 	{"name"="processing_method", "type"="processing_method"},
 	{"name"="signal_start", "type"=["null", "int"], "default"="__null__"},
@@ -76,39 +88,37 @@ values = "channel"
 	signal_stop = 20
 	use_baseline = false
 
-[config.trigger]
+[config.trigger_name]
+type = "string"
+doc = "Name of the trigger channel."
 
-	[config.trigger.name]
-	type = "string"
-	doc = "Name of the trigger channel."
+[config.trigger_self_trigger]
+type = "boolean"
+default = false
+doc = """\
+Sets whether (True) or not (False) ADC is triggered by its own AWG. \
+AWG generates 0-1 V square wave at 1 kHz. Connect AWG to trigger.physical_channel.\
+"""
 
-	[config.trigger.self_trigger]
-	type = "boolean"
-	default = false
-	doc = """\
-	Sets whether (True) or not (False) ADC is triggered by its own AWG. \
-	AWG generates 0-1 V square wave at 1 kHz. Connect AWG to trigger.physical_channel.\
-	"""
+[config.trigger_threshold]
+type = "int"
+default = 500000
+doc = "Voltage value (in uV) that triggers sampling."
 
-	[config.trigger.threshold]
-	type = "int"
-	default = 500000
-	doc = "Voltage value (in uV) that triggers sampling."
+[config.trigger_rising]
+type = "boolean"
+default = true
+doc = "Trigger on rising (true) or falling (false) edge"
 
-	[config.trigger.rising]
-	type = "boolean"
-	default = true
-	doc = "Trigger on rising (true) or falling (false) edge"
-
-	[config.trigger.delay]
-	type = "float"
-	default = -15
-	doc = """
-	Delay, as a percentage of sampled data points, between \
-	trigger and start block (delay in [-100, 100]). \
-	0 means trigger event is first data point, -50 means trigger \
-	event is in the middle of block.\
-	"""
+[config.trigger_delay]
+type = "float"
+default = -15
+doc = """\
+Delay, as a percentage of sampled data points, between \
+trigger and start block (delay in [-100, 100]). \
+0 means trigger event is first data point, -50 means trigger \
+event is in the middle of block.\
+"""
 
 [state]
 

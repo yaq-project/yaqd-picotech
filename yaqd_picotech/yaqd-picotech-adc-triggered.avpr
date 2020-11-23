@@ -1,0 +1,364 @@
+{
+    "config": {
+        "channels": {
+            "default": [
+                {
+                    "name": "A",
+                    "signal_start": 0,
+                    "signal_stop": 20,
+                    "use_baseline": false
+                },
+                {
+                    "name": "B",
+                    "signal_start": 0,
+                    "signal_stop": 20,
+                    "use_baseline": false
+                }
+            ],
+            "type": "map",
+            "values": "channel"
+        },
+        "make": {
+            "default": null,
+            "origin": "is-daemon",
+            "type": [
+                "null",
+                "string"
+            ]
+        },
+        "max_samples": {
+            "default": 200,
+            "doc": "Number of samples per trigger (per channel).",
+            "type": "int"
+        },
+        "model": {
+            "default": "ps2000",
+            "origin": "is-daemon",
+            "type": "string"
+        },
+        "oversample": {
+            "default": 16,
+            "doc": "Average on board to increase vertical resolution. Int between 1 and 256. Reduces output readings per trigger and increases time_interval in proportion.",
+            "type": "int"
+        },
+        "port": {
+            "doc": "TCP port for daemon to occupy.",
+            "origin": "is-daemon",
+            "type": "int"
+        },
+        "serial": {
+            "default": null,
+            "doc": "Serial number for the particular device represented by the daemon",
+            "origin": "is-daemon",
+            "type": [
+                "null",
+                "string"
+            ]
+        },
+        "time_base": {
+            "default": 5,
+            "doc": "Time step between measurements is `10 ns * 2^(time_base)`.",
+            "type": "int"
+        },
+        "trigger_delay": {
+            "default": -15,
+            "doc": "Delay, as a percentage of sampled data points, between trigger and start block (delay in [-100, 100]). 0 means trigger event is first data point, -50 means trigger event is in the middle of block.",
+            "type": "float"
+        },
+        "trigger_name": {
+            "doc": "Name of the trigger channel.",
+            "type": "string"
+        },
+        "trigger_rising": {
+            "default": true,
+            "doc": "Trigger on rising (true) or falling (false) edge",
+            "type": "boolean"
+        },
+        "trigger_self_trigger": {
+            "default": false,
+            "doc": "Sets whether (True) or not (False) ADC is triggered by its own AWG. AWG generates 0-1 V square wave at 1 kHz. Connect AWG to trigger.physical_channel.",
+            "type": "boolean"
+        },
+        "trigger_threshold": {
+            "default": 500000,
+            "doc": "Voltage value (in uV) that triggers sampling.",
+            "type": "int"
+        }
+    },
+    "doc": "",
+    "hardware": [
+        "picotech:ps2000"
+    ],
+    "installation": {
+        "PyPI": "https://pypi.org/project/yaqd-picotech"
+    },
+    "links": {
+        "bugtracker": "https://gitlab.com/yaq/yaqd-picotech/-/issues",
+        "source": "https://gitlab.com/yaq/yaqd-picotech"
+    },
+    "messages": {
+        "busy": {
+            "doc": "Returns true if daemon is currently busy.",
+            "origin": "is-daemon",
+            "request": [],
+            "response": "boolean"
+        },
+        "get_channel_names": {
+            "doc": "Get current channel names.",
+            "origin": "is-sensor",
+            "request": [],
+            "response": {
+                "items": "string",
+                "type": "array"
+            }
+        },
+        "get_channel_shapes": {
+            "doc": "Get current channel shapes. If list is empty, channel is scalar.",
+            "origin": "is-sensor",
+            "request": [],
+            "response": {
+                "type": "map",
+                "values": {
+                    "items": "int",
+                    "type": "array"
+                }
+            }
+        },
+        "get_channel_units": {
+            "doc": "Get current channel units.",
+            "origin": "is-sensor",
+            "request": [],
+            "response": {
+                "type": "map",
+                "values": [
+                    "null",
+                    "string"
+                ]
+            }
+        },
+        "get_config": {
+            "doc": "Full configuration for the individual daemon as defined in the TOML file.\nThis includes defaults and shared settings not directly specified in the daemon-specific TOML table.\n",
+            "origin": "is-daemon",
+            "request": [],
+            "response": "string"
+        },
+        "get_config_filepath": {
+            "doc": "String representing the absolute filepath of the configuration file on the host machine.\n",
+            "origin": "is-daemon",
+            "request": [],
+            "response": "string"
+        },
+        "get_measured": {
+            "doc": "Get most recent measured value.",
+            "origin": "is-sensor",
+            "request": [],
+            "response": {
+                "type": "map",
+                "values": [
+                    "double",
+                    "ndarray"
+                ]
+            }
+        },
+        "get_measured_samples": {
+            "doc": "Get an array of shape (sample, shot).",
+            "request": [],
+            "response": "ndarray"
+        },
+        "get_measured_shots": {
+            "request": [],
+            "response": "ndarray"
+        },
+        "get_nshots": {
+            "doc": "Get the currently planned number of shots.",
+            "request": [],
+            "response": "int"
+        },
+        "get_state": {
+            "doc": "Get version of the running daemon",
+            "origin": "is-daemon",
+            "request": [],
+            "response": "string"
+        },
+        "id": {
+            "doc": "JSON object with information to identify the daemon, including name, kind, make, model, serial.\n",
+            "origin": "is-daemon",
+            "request": [],
+            "response": {
+                "type": "map",
+                "values": [
+                    "null",
+                    "string"
+                ]
+            }
+        },
+        "set_nshots": {
+            "doc": "Set the number of shots to acquire.",
+            "request": [
+                {
+                    "name": "nshots",
+                    "type": "int"
+                }
+            ],
+            "response": "null"
+        },
+        "shutdown": {
+            "doc": "Cleanly shutdown (or restart) daemon.",
+            "origin": "is-daemon",
+            "request": [
+                {
+                    "default": false,
+                    "name": "restart",
+                    "type": "boolean"
+                }
+            ],
+            "response": "null"
+        }
+    },
+    "protocol": "yaqd-picotech-adc-triggered",
+    "requires": [],
+    "state": {
+        "nshots": {
+            "default": 100,
+            "type": "int"
+        }
+    },
+    "traits": [
+        "is-daemon",
+        "is-sensor"
+    ],
+    "types": [
+        {
+            "default": "average",
+            "name": "processing_method",
+            "symbols": [
+                "average",
+                "sum",
+                "min",
+                "max"
+            ],
+            "type": "enum"
+        },
+        {
+            "default": "5 V",
+            "name": "adc_range",
+            "symbols": [
+                "20 mV",
+                "50 mV",
+                "100 mV",
+                "200 mV",
+                "500 mV",
+                "1 V",
+                "2 V",
+                "5 V",
+                "10 V",
+                "20 V"
+            ],
+            "type": "enum"
+        },
+        {
+            "default": "DC",
+            "name": "adc_coupling",
+            "symbols": [
+                "DC",
+                "AC"
+            ],
+            "type": "enum"
+        },
+        {
+            "fields": [
+                {
+                    "name": "name",
+                    "type": "string"
+                },
+                {
+                    "name": "range",
+                    "type": "adc_range"
+                },
+                {
+                    "default": true,
+                    "name": "enabled",
+                    "type": "boolean"
+                },
+                {
+                    "name": "coupling",
+                    "type": "adc_coupling"
+                },
+                {
+                    "default": false,
+                    "name": "invert",
+                    "type": "boolean"
+                },
+                {
+                    "name": "processing_method",
+                    "type": "processing_method"
+                },
+                {
+                    "default": "__null__",
+                    "name": "signal_start",
+                    "type": [
+                        "null",
+                        "int"
+                    ]
+                },
+                {
+                    "default": "__null__",
+                    "name": "signal_stop",
+                    "type": [
+                        "null",
+                        "int"
+                    ]
+                },
+                {
+                    "default": false,
+                    "name": "use_baseline",
+                    "type": "boolean"
+                },
+                {
+                    "default": "__null__",
+                    "name": "baseline_start",
+                    "type": [
+                        "null",
+                        "int"
+                    ]
+                },
+                {
+                    "default": "__null__",
+                    "name": "baseline_stop",
+                    "type": [
+                        "null",
+                        "int"
+                    ]
+                }
+            ],
+            "name": "channel",
+            "type": "record"
+        },
+        {
+            "fields": [
+                {
+                    "name": "shape",
+                    "type": {
+                        "items": "int",
+                        "type": "array"
+                    }
+                },
+                {
+                    "name": "typestr",
+                    "type": "string"
+                },
+                {
+                    "name": "data",
+                    "type": "bytes"
+                },
+                {
+                    "name": "version",
+                    "type": "int"
+                }
+            ],
+            "logicalType": "ndarray",
+            "name": "ndarray",
+            "type": "record"
+        }
+    ]
+}
