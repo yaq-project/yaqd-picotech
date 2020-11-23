@@ -52,6 +52,10 @@ fields = [
 
 [config]
 
+[config.make]
+type = "string"
+default = "picotech"
+
 [config.model]
 type = "string"
 default = "ps2000"

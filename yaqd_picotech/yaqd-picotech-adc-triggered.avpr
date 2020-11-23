@@ -19,12 +19,9 @@
             "values": "channel"
         },
         "make": {
-            "default": null,
+            "default": "picotech",
             "origin": "is-daemon",
-            "type": [
-                "null",
-                "string"
-            ]
+            "type": "string"
         },
         "max_samples": {
             "default": 200,
@@ -94,7 +91,9 @@
     },
     "links": {
         "bugtracker": "https://gitlab.com/yaq/yaqd-picotech/-/issues",
-        "source": "https://gitlab.com/yaq/yaqd-picotech"
+        "linux_c_libraries": "https://www.picotech.com/downloads/linux",
+        "source": "https://gitlab.com/yaq/yaqd-picotech",
+        "windows_c_libraries": "https://www.picotech.com/downloads"
     },
     "messages": {
         "busy": {
