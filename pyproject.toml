@@ -33,8 +33,7 @@ Issues = "https://gitlab.com/yaq/yaqd-picotech/issues"
 dev = ["black", "pre-commit"]
 
 [tool.flit.scripts]
-yaqd-yaqd-picotech-adc-triggered = "yaqd_picotech._yaqd_picotech_adc_triggered:YaqdPicotechAdcTriggered.main"
-
+yaqd-picotech-adc-triggered = "yaqd_picotech._picotech_adc_triggered:PicotechAdcTriggered.main"
 
 [tool.black]
 line-length = 99

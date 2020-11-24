@@ -5,8 +5,6 @@ import matplotlib.pyplot as plt
 from picosdk.functions import adc2mV, mV2adc, assert_pico2000_ok
 
 # working example
-# demon project e.g. "yaqd-picotech-ps2000-adc-triggered"
-# config vs. state - lean heavy on config
 
 chARange = chBRange = 6
 status = {}
