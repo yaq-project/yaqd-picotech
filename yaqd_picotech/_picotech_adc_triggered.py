@@ -72,7 +72,7 @@ class Channel:
         return mV2adc(x / 1e3, range_to_code[self.range], maxADC)
 
     def adc_to_volts(self, x):
-        return adc2mV(x, range_to_code[self.range], maxADC) / 1e3
+        return np.array(adc2mV(x, range_to_code[self.range], maxADC)) / 1e3
 
 
 class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
@@ -105,7 +105,8 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
         if self._config["trigger_self_trigger"]:
             self._set_awg()
         self._set_trigger()
-        self.measure()
+        self.measure_tries = 0
+        # self.measure()
 
     def _open_unit(self):
         from picosdk.ps2000 import ps2000
@@ -216,37 +217,43 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
         self.time_indisposed = time_indisposed_ms.value / 1e3
 
     async def _measure(self):
-        # todo:  run_in_executor
+        self.measure_tries += 1
+        print("calling _measure", self.measure_tries)
         samples = await self._loop.run_in_executor(None, self._measure_samples)
-        shots = {
-            c.name: np.empty((self._state["nshots"])) for c in self._channels if c.enabled
-        }
+        # print(samples["A"].shape)
+        shots = {}
         # channels
-        for i, channel in enumerate(self._channels):
+        for channel in self._channels:
             if not channel.enabled:
                 continue
-            # signal
+            shots[c.name] = np.empty((self._state["nshots"]))
+            # signal:  collapse intra-shot time dimension
             signal_samples = samples[channel.name][
-                channel.signal_start:channel.signal_stop + 1
+                :, channel.signal_start:channel.signal_stop + 1
             ]
+            signal_samples = channel.adc_to_volts(signal_samples)
             signal_shots = process_samples(channel.processing_method, signal_samples)
             # baseline
             if not channel.use_baseline:
-                baseline = 0
-                continue
-            baseline_samples = samples[channel.name][
-                channel.baseline_start:channel.baseline_stop + 1
-            ]
-            baseline_samples = channel.adc_to_volts(np.array(baseline_samples))
-            baseline_shots = process_samples(channel.processing_method, baseline_samples)
-            # math
-            shots[i] = signal_shots - baseline_shots
+                shots[channel.name] = signal_shots
+            else:
+                baseline_samples = samples[channel.name][
+                    :, channel.baseline_start:channel.baseline_stop + 1
+                ]
+                baseline_samples = channel.adc_to_volts(baseline_samples)
+                baseline_shots = process_samples(channel.processing_method, baseline_samples)
+                shots[channel.name] = signal_shots - baseline_shots
             if channel.invert:
-                shots[i] *= -1
+                shots[channel.name] *= -1
         # finish
         self._samples = samples
         self._shots = shots
-        return shots
+        print([_x.shape for _x in shots.values()])
+        # collapse shots for readout:
+        out = {c.name: process_samples(c.processing_method, shots[c.name]) for c in self._channels}
+        print(out.items())
+        print(self._measurement_id)
+        return out
 
     def _measure_samples(self):
         """loop through shots, return aggregate
@@ -260,8 +267,8 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
                 dtype=np.float
             ) for name in self._channel_names
         }
-        i = 0
         self._create_task()
+        i = 0
         while i < self._state["nshots"]:
             ready = ctypes.c_int16(0)
             check = ctypes.c_int16(0)
