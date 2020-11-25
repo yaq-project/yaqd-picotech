@@ -267,16 +267,16 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
         }
         self._create_task()
         i = 0
+        not_ready = 0
         while i < self._state["nshots"]:
-            ready = ctypes.c_int16(0)
-            check = ctypes.c_int16(0)
             for wait in np.geomspace(self.time_indisposed, 60, num=15):
-                sleep(wait)
-                status = ps2000.ps2000_ready(self.chandle)  # DDK: seems to report ready even when not ready...
-                ready = ctypes.c_int16(status)
-                if ready != check:
-                    print("waiting")
+                status = ps2000.ps2000_ready(self.chandle)
+                if status != not_ready:
+                    assert_pico2000_ok(status)
+                    print("ready")
                     break
+                print("waiting")
+                sleep(wait)
             else:
                 # timeout; kill acquisition
                 # todo: call ps2000_stop, re-initialize
