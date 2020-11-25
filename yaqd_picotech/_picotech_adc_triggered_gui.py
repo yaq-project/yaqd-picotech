@@ -118,7 +118,7 @@ class ConfigWidget(QtWidgets.QWidget):
             self.channels[i] = Channel(**d, nsamples=self.nsamples)
         self.create_frame()
         self.poll_timer = QtCore.QTimer()
-        self.poll_timer.start(500)  # milliseconds
+        self.poll_timer.start(100)  # milliseconds
         self.poll_timer.timeout.connect(self.update)
 
     def create_frame(self):

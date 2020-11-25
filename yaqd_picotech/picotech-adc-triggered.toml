@@ -88,14 +88,14 @@ values = "channel"
 	signal_start = 0
 	signal_stop = 20
 	use_baseline = false
-	range = "5 V"
+	range = "2 V"
 
 	[[config.channels.default]]
 	name = "B"
 	signal_start = 0
 	signal_stop = 20
 	use_baseline = false
-	range = "5 V"
+	range = "2 V"
 
 [config.trigger_name]
 type = "string"
@@ -133,7 +133,7 @@ event is in the middle of block.\
 
 [state.nshots]
 type = "int"
-default = 100
+default = 50
 
 [messages]
 

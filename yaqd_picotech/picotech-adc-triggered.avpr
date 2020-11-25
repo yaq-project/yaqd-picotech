@@ -245,14 +245,14 @@
     "requires": [],
     "state": {
         "nshots": {
-            "default": 20,
+            "default": 50,
             "type": "int"
         }
     },
     "traits": [
-        "is-sensor",
+        "is-daemon",
         "has-measure-trigger",
-        "is-daemon"
+        "is-sensor"
     ],
     "types": [
         {
