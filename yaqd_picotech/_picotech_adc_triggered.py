@@ -11,16 +11,16 @@ from typing import Dict, Any, List
 from yaqd_core import IsSensor, IsDaemon, HasMeasureTrigger
 
 
-def process_samples(method, samples):
+def process_samples(method, samples, axis=0):
     # samples arry shape: (sample, shot)
     if method == "average":
-        shots = np.mean(samples, axis=0)
+        shots = np.mean(samples, axis=axis)
     elif method == "sum":
-        shots = np.sum(samples, axis=0)
+        shots = np.sum(samples, axis=axis)
     elif method == "min":
-        shots = np.min(samples, axis=0)
+        shots = np.min(samples, axis=axis)
     elif method == "max":
-        shots = np.max(samples, axis=0)
+        shots = np.max(samples, axis=axis)
     else:
         raise KeyError("sample processing method not recognized")
     return shots
@@ -220,19 +220,20 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
         self.measure_tries += 1
         print("calling _measure", self.measure_tries)
         samples = await self._loop.run_in_executor(None, self._measure_samples)
+        # shape: (nshots, samples)
         # print(samples["A"].shape)
         shots = {}
         # channels
         for channel in self._channels:
             if not channel.enabled:
                 continue
-            shots[channel.name] = np.empty((self._state["nshots"]))
+            shots[channel.name] = np.empty((self._state["nshots"]))  # necessary?
             # signal:  collapse intra-shot time dimension
             signal_samples = samples[channel.name][
                 :, channel.signal_start:channel.signal_stop + 1
             ]
             signal_samples = channel.adc_to_volts(signal_samples)
-            signal_shots = process_samples(channel.processing_method, signal_samples)
+            signal_shots = process_samples(channel.processing_method, signal_samples, axis=1)
             # baseline
             if not channel.use_baseline:
                 shots[channel.name] = signal_shots
@@ -241,7 +242,7 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
                     :, channel.baseline_start:channel.baseline_stop + 1
                 ]
                 baseline_samples = channel.adc_to_volts(baseline_samples)
-                baseline_shots = process_samples(channel.processing_method, baseline_samples)
+                baseline_shots = process_samples(channel.processing_method, baseline_samples, axis=1)
                 shots[channel.name] = signal_shots - baseline_shots
             if channel.invert:
                 shots[channel.name] *= -1
@@ -336,8 +337,8 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
         """shape (channel, shot)"""
         out = np.stack([arr for arr in self._shots.values()])
         print("get_measured_shots")
-        print(out.shape)
-        return self._shots
+        print(out.shape, out.dtype, out.min(), out.max())
+        return out
 
     def get_nshots(self):
         return self._state["nshots"]

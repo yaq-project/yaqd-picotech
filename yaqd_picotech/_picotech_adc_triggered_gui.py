@@ -317,8 +317,12 @@ class ConfigWidget(QtWidgets.QWidget):
         self.values_plot_widget.set_xlim(xmin, xmax)
 
     def update(self):
-        # all samples from first shot
-        yi = self.client.get_measured_samples()[0, 0]  # TODO: pass both channels
+        """
+        samples:  (channel, shot, sample)
+        shots: (channel, shot)
+        """
+        # sample from last shot
+        yi = self.client.get_measured_samples()[int(self.shot_channel_combo.get_index())][-1]
         self.samples_plot_scatter.clear()
         self.samples_plot_scatter.setData(self.sample_xi, yi)
         # active samples
@@ -326,21 +330,23 @@ class ConfigWidget(QtWidgets.QWidget):
         current_channel_object = list(self.channels.values())[
             self.samples_channel_combo.get_index()
         ]
-        if current_channel_object.enabled.get():
-            self.samples_plot_active_scatter.show()
-            s = slice(current_channel_object.signal_start, current_channel_object.signal_stop, 1)
-            xi = self.sample_xi[s]
-            yyi = yi[:][s]
-            if current_channel_object.use_baseline.get():
-                s = slice(
-                    current_channel_object.baseline_start, current_channel_object.baseline_stop, 1
-                )
-                xi = np.hstack([xi, self.sample_xi[s]])
-                yyi = np.hstack([yyi, yi[s]])
-            print(xi.shape, yyi.shape)
-            self.samples_plot_active_scatter.setData(xi, yyi)
+        # ddk: samples_plot_active might be a special feature for highlighting which samples make up an output channel (e.g. w2_diff)
+        if False:
+            if current_channel_object.enabled.get():
+                self.samples_plot_active_scatter.show()
+                # s = slice(current_channel_object.signal_start, current_channel_object.signal_stop, 1)
+                xi = self.sample_xi  # [s]
+                """
+                if current_channel_object.use_baseline.get():
+                    s = slice(
+                        current_channel_object.baseline_start, current_channel_object.baseline_stop, 1
+                    )
+                    xi = np.hstack([xi, self.sample_xi[s]])
+                    yyi = np.hstack([yyi, yi[s]])
+                """
+                print("xi.shape", xi.shape, "yyi.shape", yyi.shape)
+                self.samples_plot_active_scatter.setData(xi, yi)
         # shots
-        print(self.shot_channel_combo.get_index())
         yi = self.client.get_measured_shots()[int(self.shot_channel_combo.get_index())]
         xi = np.arange(len(yi))
         self.shots_plot_scatter.clear()
