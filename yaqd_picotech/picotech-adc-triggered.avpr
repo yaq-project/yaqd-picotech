@@ -4,12 +4,14 @@
             "default": [
                 {
                     "name": "A",
+                    "range": "5 V",
                     "signal_start": 0,
                     "signal_stop": 20,
                     "use_baseline": false
                 },
                 {
                     "name": "B",
+                    "range": "5 V",
                     "signal_start": 0,
                     "signal_stop": 20,
                     "use_baseline": false
@@ -166,11 +168,12 @@
             }
         },
         "get_measured_samples": {
-            "doc": "Get an array of shape (sample, shot).",
+            "doc": "Get an array of shape (channel, sample, shot).",
             "request": [],
             "response": "ndarray"
         },
         "get_measured_shots": {
+            "doc": "Get an array of shape (channel, shot)",
             "request": [],
             "response": "ndarray"
         },
@@ -242,14 +245,14 @@
     "requires": [],
     "state": {
         "nshots": {
-            "default": 100,
+            "default": 20,
             "type": "int"
         }
     },
     "traits": [
         "is-sensor",
-        "is-daemon",
-        "has-measure-trigger"
+        "has-measure-trigger",
+        "is-daemon"
     ],
     "types": [
         {
@@ -310,7 +313,6 @@
                     ]
                 },
                 {
-                    "default": "5 V",
                     "name": "range",
                     "type": "adc_range"
                 },

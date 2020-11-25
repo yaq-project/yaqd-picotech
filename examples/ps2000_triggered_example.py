@@ -16,9 +16,9 @@ chandle = ctypes.c_int16(status["openUnit"])
 try:
     status["setsig"] = ps.ps2000_set_sig_gen_built_in(
         chandle,
-        0,
+        500000,
         ctypes.c_uint32(1000000),
-        3,
+        1,
         1000,
         1000,
         0,
@@ -33,7 +33,7 @@ try:
     assert_pico2000_ok(status["setChB"])
     # find maximum ADC count value
     maxADC = ctypes.c_uint16(2**15)  # ddk: counts appears ready for 16 bit signed...
-    adc_threshold = mV2adc(0, chARange, maxADC)
+    adc_threshold = mV2adc(500, chARange, maxADC)
     # Set number of pre and post trigger samples to be collected
     maxSamples = 200  # maxSamples * oversample < maxSamplesReturn = memory / num_channels
 

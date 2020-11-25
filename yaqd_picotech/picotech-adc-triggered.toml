@@ -40,7 +40,7 @@ fields = [
 	{"name"="name", "type"="string"},
 	{"name"="signal_start", "type"=["null", "int"]},
 	{"name"="signal_stop", "type"=["null", "int"]},
-	{"name"="range", "type"="adc_range", default="5 V"},
+	{"name"="range", "type"="adc_range"},
     {"name"="enabled", "type"="boolean", "default"=true},
     {"name"="coupling", "type"="adc_coupling", "default"="DC"},
 	{"name"="invert", "type"="boolean", "default"=false},
@@ -88,12 +88,14 @@ values = "channel"
 	signal_start = 0
 	signal_stop = 20
 	use_baseline = false
+	range = "5 V"
 
 	[[config.channels.default]]
 	name = "B"
 	signal_start = 0
 	signal_stop = 20
 	use_baseline = false
+	range = "5 V"
 
 [config.trigger_name]
 type = "string"

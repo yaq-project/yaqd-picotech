@@ -20,13 +20,13 @@ class Channel:
         signal_start,
         signal_stop,
         nsamples,
+        range,
+        processing_method = "Average",
         enabled=True,
         invert=False,
-        processing_method="average",
         use_baseline=False,
         baseline_start=0,
         baseline_stop=0,
-        range="5 V",
     ):
         print(name, signal_start, signal_stop, nsamples)
 
@@ -109,6 +109,7 @@ class ConfigWidget(QtWidgets.QWidget):
         self.client = yaqc.Client(self.port)
         self.client.measure(loop=True)
         config = toml.loads(self.client.get_config())
+        print(config.items())
         self.nsamples = config["max_samples"]
         self.channels = {}
         for i, d in enumerate(config["channels"]):
@@ -117,7 +118,7 @@ class ConfigWidget(QtWidgets.QWidget):
             self.channels[i] = Channel(**d, nsamples=self.nsamples)
         self.create_frame()
         self.poll_timer = QtCore.QTimer()
-        self.poll_timer.start(100)  # milliseconds
+        self.poll_timer.start(500)  # milliseconds
         self.poll_timer.timeout.connect(self.update)
 
     def create_frame(self):
@@ -273,7 +274,7 @@ class ConfigWidget(QtWidgets.QWidget):
         # create dictionary, starting from existing
         config = toml.loads(self.client.get_config())
         # channels
-        for k, c in config["channels"].items():
+        for k, c in enumerate(config["channels"]):
             channel = self.channels[k]
             config["channels"][k]["name"] = channel.name.get()
             config["channels"][k]["range"] = channel.range.get()
@@ -321,8 +322,8 @@ class ConfigWidget(QtWidgets.QWidget):
         samples:  (channel, shot, sample)
         shots: (channel, shot)
         """
-        # sample from last shot
-        yi = self.client.get_measured_samples()[int(self.shot_channel_combo.get_index())][-1]
+        # sample from first shot
+        yi = self.client.get_measured_samples()[int(self.shot_channel_combo.get_index())][0]
         self.samples_plot_scatter.clear()
         self.samples_plot_scatter.setData(self.sample_xi, yi)
         # active samples
@@ -331,21 +332,20 @@ class ConfigWidget(QtWidgets.QWidget):
             self.samples_channel_combo.get_index()
         ]
         # ddk: samples_plot_active might be a special feature for highlighting which samples make up an output channel (e.g. w2_diff)
-        if False:
-            if current_channel_object.enabled.get():
-                self.samples_plot_active_scatter.show()
-                # s = slice(current_channel_object.signal_start, current_channel_object.signal_stop, 1)
-                xi = self.sample_xi  # [s]
-                """
-                if current_channel_object.use_baseline.get():
-                    s = slice(
-                        current_channel_object.baseline_start, current_channel_object.baseline_stop, 1
-                    )
-                    xi = np.hstack([xi, self.sample_xi[s]])
-                    yyi = np.hstack([yyi, yi[s]])
-                """
-                print("xi.shape", xi.shape, "yyi.shape", yyi.shape)
-                self.samples_plot_active_scatter.setData(xi, yi)
+        # ddk: this plot gives brighter colors and easier to see; use it!
+        if current_channel_object.enabled.get():
+            self.samples_plot_active_scatter.show()
+            # s = slice(current_channel_object.signal_start, current_channel_object.signal_stop, 1)
+            xi = self.sample_xi  # [s]
+            """
+            if current_channel_object.use_baseline.get():
+                s = slice(
+                    current_channel_object.baseline_start, current_channel_object.baseline_stop, 1
+                )
+                xi = np.hstack([xi, self.sample_xi[s]])
+                yyi = np.hstack([yyi, yi[s]])
+            """
+            self.samples_plot_active_scatter.setData(xi, yi)
         # shots
         yi = self.client.get_measured_shots()[int(self.shot_channel_combo.get_index())]
         xi = np.arange(len(yi))
