@@ -106,7 +106,7 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
             self._set_awg()
         self._set_trigger()
         self.measure_tries = 0
-        # self.measure()
+        self.measure()
 
     def _open_unit(self):
         from picosdk.ps2000 import ps2000
@@ -226,7 +226,7 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
         for channel in self._channels:
             if not channel.enabled:
                 continue
-            shots[c.name] = np.empty((self._state["nshots"]))
+            shots[channel.name] = np.empty((self._state["nshots"]))
             # signal:  collapse intra-shot time dimension
             signal_samples = samples[channel.name][
                 :, channel.signal_start:channel.signal_stop + 1
@@ -248,11 +248,8 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
         # finish
         self._samples = samples
         self._shots = shots
-        print([_x.shape for _x in shots.values()])
         # collapse shots for readout:
         out = {c.name: process_samples(c.processing_method, shots[c.name]) for c in self._channels}
-        print(out.items())
-        print(self._measurement_id)
         return out
 
     def _measure_samples(self):
@@ -329,9 +326,17 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
         return "V"
 
     def get_measured_samples(self):
-        return self._samples
+        """shape [channels, shots, samples]"""
+        print("get_measured_samples")
+        out = np.stack([arr for arr in self._samples.values()])
+        print(out.shape)
+        return out
 
     def get_measured_shots(self):
+        """shape (channel, shot)"""
+        out = np.stack([arr for arr in self._shots.values()])
+        print("get_measured_shots")
+        print(out.shape)
         return self._shots
 
     def get_nshots(self):

@@ -137,10 +137,11 @@ default = 100
 
 [messages.get_measured_samples]
 response = "ndarray"
-doc = "Get an array of shape (sample, shot)."
+doc = "Get an array of shape (channel, sample, shot)."
 
 [messages.get_measured_shots]
 response = "ndarray"
+doc = "Get an array of shape (channel, shot)"
 
 [messages.get_nshots]
 doc = "Get the currently planned number of shots."
