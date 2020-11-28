@@ -57,8 +57,8 @@ maxADC = ctypes.c_uint16(2**15)
 class Channel:
     name: str
     physical_channel: int
-    signal_start: int
-    signal_stop: int
+    signal_start: int = 0
+    signal_stop: int = 1
     processing_method: str = "average"
     baseline_start: int = None
     baseline_stop: int = None
@@ -81,10 +81,11 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
 
     def __init__(self, name, config, config_filepath):
         super().__init__(name, config, config_filepath)
+        print(self._config.items())
 
         self._channels = []
-        for k, d in enumerate(self._config["channels"]):
-            channel = Channel(**d, physical_channel=k)
+        for name, d in self._config["channels"].items():
+            channel = Channel(**d, name=name)
             self._channels.append(channel)
         self._channel_names = [c.name for c in self._channels if c.enabled]  # expected by parent
         self._channel_units = {k: "V" for k in self._channel_names}  # expected by parent
@@ -99,8 +100,9 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
 
         # finish
         self._open_unit()
+        self.state_change = False
         # self.measure_tries = 0
-        self.measure()
+        self.measure(loop=self._config["loop_at_startup"])
 
     def _open_unit(self):
         from picosdk.ps2000 import ps2000
@@ -112,8 +114,7 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
 
         self._set_channels()
         self._set_block_time()
-        # trigger
-        if self._config["trigger_self_trigger"]:
+        if self._config["trigger_self"]:
             self._set_awg()
         self._set_trigger()
 
@@ -135,9 +136,6 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
         from picosdk.ps2000 import ps2000
         from picosdk.functions import assert_pico2000_ok
         trigger_channel = [c for c in self._channels if c.name==self._config["trigger_name"]][0]
-        print("trigger_rising", self._config["trigger_rising"])
-        print("threshold", self._config["trigger_threshold"] * 1e-6)
-        print("threshold", trigger_channel.volts_to_adc(self._config["trigger_threshold"] * 1e-6))
         status = ps2000.ps2000_set_trigger(
             self.chandle,
             trigger_channel.physical_channel,  # todo: convert to physical channel
@@ -232,7 +230,7 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
             if not channel.enabled:
                 continue
             shots[channel.name] = np.empty((self._state["nshots"]))  # necessary?
-            # signal:  collapse intra-shot time dimension
+            # signal:  collapse intra-shot (samples) time dimension
             signal_samples = samples[channel.name][
                 :, channel.signal_start:channel.signal_stop + 1
             ]
@@ -249,6 +247,9 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
             if channel.invert:
                 shots[channel.name] *= -1
         # finish
+        if self.state_change:
+            self.state_change = False
+            return self._measure()
         self._samples = samples
         self._shots = shots
         # collapse shots for readout:
@@ -280,16 +281,19 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
             else:
                 # timeout; kill acquisition
                 # todo: call ps2000_stop, re-initialize
-                from picosdk.ps2000 import ps2000
-                from picosdk.functions import assert_pico2000_ok
+                # from picosdk.ps2000 import ps2000
+                # from picosdk.functions import assert_pico2000_ok
 
-                status = ps2000.ps2000_stop()
-                assert_pico2000_ok(status)
-                return self._measure_samples  # non-ideal: restarts all nshots if one fails
+                # status = ps2000.ps2000_stop()
+                # assert_pico2000_ok(status)
+                return self._measure_samples()  # non-ideal: restarts all nshots if one fails
             sample = self._measure_sample()
             for name in self._channel_names:
                 samples[name][i] = sample[name]
                 # print(sample[name].min(), sample[name].max())
+            if self.state_change:
+                self.state_change = False
+                return self._measure_samples()
             self._create_task()
             i += 1
         return samples
@@ -329,8 +333,8 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
 
     def get_measured_samples(self):
         """shape [channels, shots, samples]"""
-        # print("get_measured_samples")
         out = np.stack([arr for arr in self._samples.values()])
+        # print("get_measured_samples")
         # print(out.shape, out[:,0].min())
         return out
 
@@ -347,4 +351,5 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
     def set_nshots(self, nshots):
         """Set number of shots."""
         assert nshots > 0
+        self.state_change = True
         self._state["nshots"] = nshots

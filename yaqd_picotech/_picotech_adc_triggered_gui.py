@@ -9,6 +9,7 @@ import qtypes  # type: ignore
 import yaqc  # type: ignore
 import toml
 import numpy as np  # type: ignore
+import time
 
 ranges = [0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20]
 
@@ -17,16 +18,18 @@ class Channel:
     def __init__(
         self,
         name,
+        nsamples,
+        physical_channel,
+        range,
         signal_start,
         signal_stop,
-        nsamples,
-        range,
-        processing_method = "Average",
-        enabled=True,
-        invert=False,
-        use_baseline=False,
-        baseline_start=0,
-        baseline_stop=0,
+        processing_method,
+        enabled,
+        coupling,
+        invert,
+        use_baseline,
+        baseline_start,
+        baseline_stop,
     ):
         print(name, signal_start, signal_stop, nsamples)
 
@@ -43,14 +46,14 @@ class Channel:
             decimals=0, limits=sample_limits, value=signal_start
         )
         self.signal_stop_index = qtypes.Number(decimals=0, limits=sample_limits, value=signal_stop)
-        processing_methods = ["Average", "Sum", "Min", "Max"]  # TODO: source from avpr
+        processing_methods = ["average", "sum", "min", "max"]  # TODO: source from avpr
         self.processing_method = qtypes.Enum(allowed_values=processing_methods, value=processing_method)
         self.use_baseline = qtypes.Bool(value=use_baseline)
         self.baseline_start_index = qtypes.Number(
-            decimals=0, limits=sample_limits, value=baseline_start
+            decimals=0, limits=sample_limits, value=baseline_start if baseline_start is not None else 0
         )
         self.baseline_stop_index = qtypes.Number(
-            decimals=0, limits=sample_limits, value=baseline_stop
+            decimals=0, limits=sample_limits, value=baseline_stop if baseline_stop is not None else 0
         )
         # signals
         self.use_baseline.updated.connect(lambda: self.on_use_baseline())
@@ -77,7 +80,7 @@ class Channel:
     def get_widget(self):
         self.input_table = qtypes.widgets.InputTable()
         self.input_table.append(self.name, "Name")
-        self.input_table.append(self.range, "Range +/-V, (uV/level)")
+        self.input_table.append(self.range, "Range +/-V")
         # TODO: resolution display
         self.input_table.append(self.invert, "Invert")
         self.input_table.append(self.signal_start_index, "Signal Start")
@@ -109,13 +112,11 @@ class ConfigWidget(QtWidgets.QWidget):
         self.client = yaqc.Client(self.port)
         self.client.measure(loop=True)
         config = toml.loads(self.client.get_config())
-        print(config.items())
         self.nsamples = config["max_samples"]
         self.channels = {}
-        for i, d in enumerate(config["channels"]):
-            if d["name"] is None:
-                d["name"] = i
-            self.channels[i] = Channel(**d, nsamples=self.nsamples)
+        # ddk: default names necessary?
+        for name, d in config["channels"].items():
+            self.channels[name] = Channel(**d, name=name, nsamples=self.nsamples)
         self.create_frame()
         self.poll_timer = QtCore.QTimer()
         self.poll_timer.start(100)  # milliseconds
@@ -273,24 +274,29 @@ class ConfigWidget(QtWidgets.QWidget):
     def write_config(self):
         # create dictionary, starting from existing
         config = toml.loads(self.client.get_config())
+        print(config.items())
         # channels
-        for k, c in enumerate(config["channels"]):
+        for k in config["channels"].keys():
             channel = self.channels[k]
             config["channels"][k]["name"] = channel.name.get()
             config["channels"][k]["range"] = channel.range.get()
             config["channels"][k]["enabled"] = channel.enabled.get()
             config["channels"][k]["invert"] = channel.invert.get()
-            config["channels"][k]["signal_start"] = channel.signal_start.get()
-            config["channels"][k]["signal_stop"] = channel.signal_stop.get()
-            config["channels"][k]["signal_method"] = channel.processing_method.get()
+            config["channels"][k]["signal_start"] = channel.signal_start_index.get()
+            config["channels"][k]["signal_stop"] = channel.signal_stop_index.get()
+            config["channels"][k]["processing_method"] = channel.processing_method.get()
             config["channels"][k]["use_baseline"] = channel.use_baseline.get()
-            config["channels"][k]["baseline_start"] = channel.baseline_start.get()
-            config["channels"][k]["baseline_stop"] = channel.baseline_stop.get()
+            config["channels"][k]["baseline_start"] = channel.baseline_start_index.get()
+            config["channels"][k]["baseline_stop"] = channel.baseline_stop_index.get()
+            print(toml.dumps(config["channels"][k]))
         # write config
         # TODO:
         # recreate client
+        # ddk: seems to fail every time; so bypass for now
+        return
         while True:
             try:
+                print(self.port)
                 self.client = yaqc.Client(self.port)
             except:
                 time.sleep(0.1)
@@ -488,7 +494,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, app, port):
         super().__init__()
         self.app = app
-        self.setWindowTitle("ni-daqmx-tmux")
+        self.setWindowTitle("Picoscope")
         self.setCentralWidget(ConfigWidget(port))
 
 

@@ -1,25 +1,5 @@
 {
     "config": {
-        "channels": {
-            "default": [
-                {
-                    "name": "A",
-                    "range": "5 V",
-                    "signal_start": 0,
-                    "signal_stop": 20,
-                    "use_baseline": false
-                },
-                {
-                    "name": "B",
-                    "range": "5 V",
-                    "signal_start": 0,
-                    "signal_stop": 20,
-                    "use_baseline": false
-                }
-            ],
-            "type": "map",
-            "values": "channel"
-        },
         "loop_at_startup": {
             "default": false,
             "doc": "If set to true, the daemon will begin to loop measure as soon as it starts.",
@@ -79,7 +59,7 @@
             "doc": "Trigger on rising (true) or falling (false) edge",
             "type": "boolean"
         },
-        "trigger_self_trigger": {
+        "trigger_self": {
             "default": false,
             "doc": "Sets whether (True) or not (False) ADC is triggered by its own AWG. AWG generates 0-1 V square wave at 1 kHz. Connect AWG to trigger.physical_channel.",
             "type": "boolean"
@@ -255,112 +235,6 @@
         "is-sensor"
     ],
     "types": [
-        {
-            "default": "average",
-            "name": "processing_method",
-            "symbols": [
-                "average",
-                "sum",
-                "min",
-                "max"
-            ],
-            "type": "enum"
-        },
-        {
-            "default": "5 V",
-            "name": "adc_range",
-            "symbols": [
-                "20 mV",
-                "50 mV",
-                "100 mV",
-                "200 mV",
-                "500 mV",
-                "1 V",
-                "2 V",
-                "5 V",
-                "10 V",
-                "20 V"
-            ],
-            "type": "enum"
-        },
-        {
-            "default": "DC",
-            "name": "adc_coupling",
-            "symbols": [
-                "DC",
-                "AC"
-            ],
-            "type": "enum"
-        },
-        {
-            "fields": [
-                {
-                    "name": "name",
-                    "type": "string"
-                },
-                {
-                    "name": "signal_start",
-                    "type": [
-                        "null",
-                        "int"
-                    ]
-                },
-                {
-                    "name": "signal_stop",
-                    "type": [
-                        "null",
-                        "int"
-                    ]
-                },
-                {
-                    "name": "range",
-                    "type": "adc_range"
-                },
-                {
-                    "default": true,
-                    "name": "enabled",
-                    "type": "boolean"
-                },
-                {
-                    "default": "DC",
-                    "name": "coupling",
-                    "type": "adc_coupling"
-                },
-                {
-                    "default": false,
-                    "name": "invert",
-                    "type": "boolean"
-                },
-                {
-                    "default": "average",
-                    "name": "processing_method",
-                    "type": "processing_method"
-                },
-                {
-                    "default": false,
-                    "name": "use_baseline",
-                    "type": "boolean"
-                },
-                {
-                    "default": "__null__",
-                    "name": "baseline_start",
-                    "type": [
-                        "null",
-                        "int"
-                    ]
-                },
-                {
-                    "default": "__null__",
-                    "name": "baseline_stop",
-                    "type": [
-                        "null",
-                        "int"
-                    ]
-                }
-            ],
-            "name": "channel",
-            "type": "record"
-        },
         {
             "fields": [
                 {

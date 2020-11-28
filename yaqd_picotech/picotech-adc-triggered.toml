@@ -15,40 +15,39 @@ linux_c_libraries = "https://www.picotech.com/downloads/linux"
 [installation]
 PyPI = "https://pypi.org/project/yaqd-picotech"
 
-[[types]]
-type = "enum"
-name = "processing_method"
-symbols = ["average", "sum", "min", "max"]
-default = "average"
+# todo: implement these types
+# [[types]]
+# type = "enum"
+# name = "processing_method"
+# symbols = ["average", "sum", "min", "max"]
 
-[[types]]
-type = "enum"
-name = "adc_range"
-symbols = ["20 mV", "50 mV", "100 mV", "200 mV", "500 mV", "1 V", "2 V", "5 V", "10 V", "20 V"]
-default = "5 V"
+# [[types]]
+# type = "enum"
+# name = "adc_range"
+# symbols = ["20 mV", "50 mV", "100 mV", "200 mV", "500 mV", "1 V", "2 V", "5 V", "10 V", "20 V"]
 
-[[types]]
-type = "enum"
-name = "adc_coupling"
-symbols = ["DC", "AC"]
-default = "DC"
+# [[types]]
+# type = "enum"
+# name = "adc_coupling"
+# symbols = ["DC", "AC"]
 
-[[types]]
-type = "record"
-name = "channel"
-fields = [
-	{"name"="name", "type"="string"},
-	{"name"="signal_start", "type"=["null", "int"]},
-	{"name"="signal_stop", "type"=["null", "int"]},
-	{"name"="range", "type"="adc_range"},
-    {"name"="enabled", "type"="boolean", "default"=true},
-    {"name"="coupling", "type"="adc_coupling", "default"="DC"},
-	{"name"="invert", "type"="boolean", "default"=false},
-	{"name"="processing_method", "type"="processing_method", "default"="average"},
-	{"name"="use_baseline", "type"="boolean", "default"=false},
-	{"name"="baseline_start", "type"=["null", "int"], "default"="__null__"},
-	{"name"="baseline_stop", "type"=["null", "int"], "default"="__null__"},
-]
+# [[types]]
+# type = "record"
+# name = "channel"
+# fields = [
+# 	{"name"="name", "type"="string"},
+# 	{"name"="physical_channel", "type"="int"},
+# 	{"name"="signal_start", "type"=["null", "int"], "default"=0},
+# 	{"name"="signal_stop", "type"=["null", "int"], "default"=1},
+# 	{"name"="range", "type"="adc_range", "default"="5 V"},
+#     {"name"="enabled", "type"="boolean", "default"=true},
+#     {"name"="coupling", "type"="adc_coupling", "default"="DC"},
+# 	{"name"="invert", "type"="boolean", "default"=false},
+# 	{"name"="processing_method", "type"="processing_method", "default"="average"},
+# 	{"name"="use_baseline", "type"="boolean", "default"=false},
+# 	{"name"="baseline_start", "type"=["null", "int"], "default"="__null__"},
+# 	{"name"="baseline_stop", "type"=["null", "int"], "default"="__null__"},
+# ]
 
 [config]
 
@@ -79,29 +78,29 @@ Int between 1 and 256. \
 Reduces output readings per trigger and increases time_interval in proportion.\
 """
 
-[config.channels]
-type = "map"
-values = "channel"
+# [config.channels]
+# type = "map"
+# values = "channel"
 
-	[[config.channels.default]]
-	name = "A"
-	signal_start = 0
-	signal_stop = 20
-	use_baseline = false
-	range = "2 V"
+# [[config.channels.default]]
+# name = "A"
+# # signal_start = 0
+# signal_stop = 20
+# # use_baseline = false
+# range = "2 V"
 
-	[[config.channels.default]]
-	name = "B"
-	signal_start = 0
-	signal_stop = 20
-	use_baseline = false
-	range = "2 V"
+# [[config.channels.default]]
+# name = "B"
+# # signal_start = 0
+# signal_stop = 20
+# # use_baseline = false
+# range = "2 V"
 
 [config.trigger_name]
 type = "string"
 doc = "Name of the trigger channel."
 
-[config.trigger_self_trigger]
+[config.trigger_self]
 type = "boolean"
 default = false
 doc = """\
