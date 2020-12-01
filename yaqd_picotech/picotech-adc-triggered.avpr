@@ -1,5 +1,9 @@
 {
     "config": {
+        "channels": {
+            "type": "map",
+            "values": "channel"
+        },
         "loop_at_startup": {
             "default": false,
             "doc": "If set to true, the daemon will begin to loop measure as soon as it starts.",
@@ -48,7 +52,7 @@
         "trigger_delay": {
             "default": -15,
             "doc": "Delay, as a percentage of sampled data points, between trigger and start block (delay in [-100, 100]). 0 means trigger event is first data point, -50 means trigger event is in the middle of block.",
-            "type": "float"
+            "type": "int"
         },
         "trigger_name": {
             "doc": "Name of the trigger channel.",
@@ -230,11 +234,121 @@
         }
     },
     "traits": [
+        "is-sensor",
         "is-daemon",
-        "has-measure-trigger",
-        "is-sensor"
+        "has-measure-trigger"
     ],
     "types": [
+        {
+            "name": "processing_method",
+            "symbols": [
+                "average",
+                "sum",
+                "min",
+                "max"
+            ],
+            "type": "enum"
+        },
+        {
+            "name": "adc_range",
+            "symbols": [
+                "20 mV",
+                "50 mV",
+                "100 mV",
+                "200 mV",
+                "500 mV",
+                "1 V",
+                "2 V",
+                "5 V",
+                "10 V",
+                "20 V"
+            ],
+            "type": "enum"
+        },
+        {
+            "name": "adc_coupling",
+            "symbols": [
+                "DC",
+                "AC"
+            ],
+            "type": "enum"
+        },
+        {
+            "fields": [
+                {
+                    "name": "name",
+                    "type": "string"
+                },
+                {
+                    "name": "physical_channel",
+                    "type": "int"
+                },
+                {
+                    "default": 0,
+                    "name": "signal_start",
+                    "type": [
+                        "null",
+                        "int"
+                    ]
+                },
+                {
+                    "default": 1,
+                    "name": "signal_stop",
+                    "type": [
+                        "null",
+                        "int"
+                    ]
+                },
+                {
+                    "default": "5 V",
+                    "name": "range",
+                    "type": "adc_range"
+                },
+                {
+                    "default": true,
+                    "name": "enabled",
+                    "type": "boolean"
+                },
+                {
+                    "default": "DC",
+                    "name": "coupling",
+                    "type": "adc_coupling"
+                },
+                {
+                    "default": false,
+                    "name": "invert",
+                    "type": "boolean"
+                },
+                {
+                    "default": "average",
+                    "name": "processing_method",
+                    "type": "processing_method"
+                },
+                {
+                    "default": false,
+                    "name": "use_baseline",
+                    "type": "boolean"
+                },
+                {
+                    "default": "__null__",
+                    "name": "baseline_start",
+                    "type": [
+                        "null",
+                        "int"
+                    ]
+                },
+                {
+                    "default": "__null__",
+                    "name": "baseline_stop",
+                    "type": [
+                        "null",
+                        "int"
+                    ]
+                }
+            ],
+            "name": "channel",
+            "type": "record"
+        },
         {
             "fields": [
                 {

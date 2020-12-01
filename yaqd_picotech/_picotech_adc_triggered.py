@@ -60,8 +60,8 @@ class Channel:
     signal_start: int = 0
     signal_stop: int = 1
     processing_method: str = "average"
-    baseline_start: int = None
-    baseline_stop: int = None
+    baseline_start: int = 0
+    baseline_stop: int = 0
     range: str = "5 V"
     enabled: bool = True
     coupling: str = "DC"
