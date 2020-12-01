@@ -35,7 +35,6 @@ symbols = ["DC", "AC"]
 type = "record"
 name = "channel"
 fields = [
-	{"name"="name", "type"="string"},
 	{"name"="physical_channel", "type"="int"},
 	{"name"="signal_start", "type"="int", "default"=0},
 	{"name"="signal_stop", "type"="int", "default"=1},

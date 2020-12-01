@@ -234,9 +234,9 @@
         }
     },
     "traits": [
-        "is-sensor",
         "is-daemon",
-        "has-measure-trigger"
+        "has-measure-trigger",
+        "is-sensor"
     ],
     "types": [
         {
@@ -276,28 +276,18 @@
         {
             "fields": [
                 {
-                    "name": "name",
-                    "type": "string"
-                },
-                {
                     "name": "physical_channel",
                     "type": "int"
                 },
                 {
                     "default": 0,
                     "name": "signal_start",
-                    "type": [
-                        "null",
-                        "int"
-                    ]
+                    "type": "int"
                 },
                 {
                     "default": 1,
                     "name": "signal_stop",
-                    "type": [
-                        "null",
-                        "int"
-                    ]
+                    "type": "int"
                 },
                 {
                     "default": "5 V",
@@ -330,20 +320,14 @@
                     "type": "boolean"
                 },
                 {
-                    "default": "__null__",
+                    "default": 0,
                     "name": "baseline_start",
-                    "type": [
-                        "null",
-                        "int"
-                    ]
+                    "type": "int"
                 },
                 {
-                    "default": "__null__",
+                    "default": 0,
                     "name": "baseline_stop",
-                    "type": [
-                        "null",
-                        "int"
-                    ]
+                    "type": "int"
                 }
             ],
             "name": "channel",
