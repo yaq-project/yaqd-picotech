@@ -11,9 +11,12 @@
             "type": "boolean"
         },
         "make": {
-            "default": "picotech",
+            "default": null,
             "origin": "is-daemon",
-            "type": "string"
+            "type": [
+                "null",
+                "string"
+            ]
         },
         "max_samples": {
             "default": 200,
@@ -21,9 +24,12 @@
             "type": "int"
         },
         "model": {
-            "default": "ps2000",
+            "default": null,
             "origin": "is-daemon",
-            "type": "string"
+            "type": [
+                "null",
+                "string"
+            ]
         },
         "oversample": {
             "default": 16,
@@ -49,14 +55,14 @@
             "doc": "Time step between measurements is `10 ns * 2^(time_base)`.",
             "type": "int"
         },
+        "trigger_channel": {
+            "doc": "trigger channel id (A, B, C, or D)",
+            "type": "string"
+        },
         "trigger_delay": {
             "default": -15,
             "doc": "Delay, as a percentage of sampled data points, between trigger and start block (delay in [-100, 100]). 0 means trigger event is first data point, -50 means trigger event is in the middle of block.",
             "type": "int"
-        },
-        "trigger_name": {
-            "doc": "Name of the trigger channel.",
-            "type": "string"
         },
         "trigger_rising": {
             "default": true,
@@ -235,8 +241,8 @@
     },
     "traits": [
         "is-daemon",
-        "has-measure-trigger",
-        "is-sensor"
+        "is-sensor",
+        "has-measure-trigger"
     ],
     "types": [
         {
@@ -276,8 +282,24 @@
         {
             "fields": [
                 {
-                    "name": "physical_channel",
-                    "type": "int"
+                    "default": "",
+                    "name": "name",
+                    "type": "string"
+                },
+                {
+                    "default": false,
+                    "name": "enabled",
+                    "type": "boolean"
+                },
+                {
+                    "default": "DC",
+                    "name": "coupling",
+                    "type": "adc_coupling"
+                },
+                {
+                    "default": "5 V",
+                    "name": "range",
+                    "type": "adc_range"
                 },
                 {
                     "default": 0,
@@ -288,21 +310,6 @@
                     "default": 1,
                     "name": "signal_stop",
                     "type": "int"
-                },
-                {
-                    "default": "5 V",
-                    "name": "range",
-                    "type": "adc_range"
-                },
-                {
-                    "default": true,
-                    "name": "enabled",
-                    "type": "boolean"
-                },
-                {
-                    "default": "DC",
-                    "name": "coupling",
-                    "type": "adc_coupling"
                 },
                 {
                     "default": false,

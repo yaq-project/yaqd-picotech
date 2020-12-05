@@ -1,5 +1,7 @@
+# refer to:
 # https://traits.yaq.fyi/
-# refer to toml.io
+# https://toml.io
+# https://avro.apache.org/docs/current/spec.html#schema_complex
 
 protocol = "picotech-adc-triggered"
 doc = "Triggered Picotech Oscilloscope"
@@ -35,12 +37,12 @@ symbols = ["DC", "AC"]
 type = "record"
 name = "channel"
 fields = [
-	{"name"="physical_channel", "type"="int"},
+	{"name"="name", "type"="string", default=""},
+    {"name"="enabled", "type"="boolean", "default"=false},
+    {"name"="coupling", "type"="adc_coupling", "default"="DC"},
+	{"name"="range", "type"="adc_range", "default"="5 V"},
 	{"name"="signal_start", "type"="int", "default"=0},
 	{"name"="signal_stop", "type"="int", "default"=1},
-	{"name"="range", "type"="adc_range", "default"="5 V"},
-    {"name"="enabled", "type"="boolean", "default"=true},
-    {"name"="coupling", "type"="adc_coupling", "default"="DC"},
 	{"name"="invert", "type"="boolean", "default"=false},
 	{"name"="processing_method", "type"="processing_method", "default"="average"},
 	{"name"="use_baseline", "type"="boolean", "default"=false},
@@ -49,14 +51,6 @@ fields = [
 ]
 
 [config]
-
-[config.make]
-type = "string"
-default = "picotech"
-
-[config.model]
-type = "string"
-default = "ps2000"
 
 [config.timebase]
 type = "int"
@@ -81,9 +75,9 @@ Reduces output readings per trigger and increases time_interval in proportion.\
 type = "map"
 values = "channel"
 
-[config.trigger_name]
+[config.trigger_channel]
 type = "string"
-doc = "Name of the trigger channel."
+doc = "trigger channel id (A, B, C, or D)"
 
 [config.trigger_self]
 type = "boolean"

@@ -17,9 +17,8 @@ ranges = [0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20]
 class Channel:
     def __init__(
         self,
-        name,
         nsamples,
-        physical_channel,
+        name,
         range,
         signal_start,
         signal_stop,
@@ -31,7 +30,7 @@ class Channel:
         baseline_start,
         baseline_stop,
     ):
-        print(name, signal_start, signal_stop, nsamples)
+        print(name, signal_start, signal_stop, range, nsamples)
 
         self.enabled = qtypes.Bool(value=enabled)
         self.name = qtypes.String(value=name)
@@ -39,7 +38,8 @@ class Channel:
             decimals=0, limits=qtypes.NumberLimits(0, 4, None)
         )
         allowed_ranges = ["{0:0.2f}".format(r) for r in ranges]
-        self.range = qtypes.Enum(allowed_values=allowed_ranges)
+        range_id = [i for i, a in enumerate(ranges) if a == float(range[:-2])][0]
+        self.range = qtypes.Enum(allowed_values=allowed_ranges, initial_value=allowed_ranges[range_id])
         self.invert = qtypes.Bool(value=invert)
         sample_limits = qtypes.NumberLimits(0, nsamples - 1, None)
         self.signal_start_index = qtypes.Number(
@@ -81,10 +81,9 @@ class Channel:
         self.input_table = qtypes.widgets.InputTable()
         self.input_table.append(self.name, "Name")
         self.input_table.append(self.range, "Range +/-V")
-        # TODO: resolution display
-        self.input_table.append(self.invert, "Invert")
         self.input_table.append(self.signal_start_index, "Signal Start")
         self.input_table.append(self.signal_stop_index, "Signal Stop")
+        self.input_table.append(self.invert, "Invert")
         self.input_table.append(self.processing_method, "Method")
         self.input_table.append(self.use_baseline, "Use Baseline")
         self.input_table.append(self.baseline_start_index, "Baseline Start")
@@ -114,9 +113,8 @@ class ConfigWidget(QtWidgets.QWidget):
         config = toml.loads(self.client.get_config())
         self.nsamples = config["max_samples"]
         self.channels = {}
-        # ddk: default names necessary?
         for name, d in config["channels"].items():
-            self.channels[name] = Channel(**d, name=name, nsamples=self.nsamples)
+            self.channels[name] = Channel(**d, nsamples=self.nsamples)
         self.create_frame()
         self.poll_timer = QtCore.QTimer()
         self.poll_timer.start(100)  # milliseconds
@@ -200,8 +198,6 @@ class ConfigWidget(QtWidgets.QWidget):
         layout.addWidget(settings_scroll_area)
         input_table = qtypes.widgets.InputTable()
         input_table.append(None, "Settings")
-        self.rest_channel = qtypes.String(name="Rest Channel")
-        input_table.append(self.rest_channel)
         settings_layout.addWidget(input_table)
         # channels
         line = qtypes.widgets.Line("H")
@@ -274,11 +270,10 @@ class ConfigWidget(QtWidgets.QWidget):
     def write_config(self):
         # create dictionary, starting from existing
         config = toml.loads(self.client.get_config())
-        print(config.items())
         # channels
         for k in config["channels"].keys():
             channel = self.channels[k]
-            config["channels"][k]["name"] = channel.name.get()
+            # config["channels"][k]["name"] = channel.name.get()
             config["channels"][k]["range"] = channel.range.get()
             config["channels"][k]["enabled"] = channel.enabled.get()
             config["channels"][k]["invert"] = channel.invert.get()
@@ -288,15 +283,16 @@ class ConfigWidget(QtWidgets.QWidget):
             config["channels"][k]["use_baseline"] = channel.use_baseline.get()
             config["channels"][k]["baseline_start"] = channel.baseline_start_index.get()
             config["channels"][k]["baseline_stop"] = channel.baseline_stop_index.get()
-            print(toml.dumps(config["channels"][k]))
-        # write config
-        # TODO:
-        # recreate client
-        # ddk: seems to fail every time; so bypass for now
+        print(toml.dumps({self.client.id()["name"]: config}))
+        # ddk: prevent writing until fields are properly tested
+        print("writing cancelled")
         return
+        # write config
+        with open(self.client.get_config_filepath(), 'w') as f:
+            toml.dump(config, f)
+        self.client.shutdown(restart=True)
         while True:
             try:
-                print(self.port)
                 self.client = yaqc.Client(self.port)
             except:
                 time.sleep(0.1)

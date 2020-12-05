@@ -5,11 +5,11 @@ import ctypes
 import numpy as np
 from dataclasses import dataclass
 from time import sleep
+import toml
 
 from picosdk.functions import adc2mV, mV2adc
 from typing import Dict, Any, List
 from yaqd_core import IsSensor, IsDaemon, HasMeasureTrigger
-
 
 def process_samples(method, samples, axis=0):
     # samples arry shape: (sample, shot)
@@ -57,16 +57,16 @@ maxADC = ctypes.c_uint16(2**15)
 class Channel:
     name: str
     physical_channel: int
-    signal_start: int = 0
-    signal_stop: int = 1
-    processing_method: str = "average"
-    baseline_start: int = 0
-    baseline_stop: int = 0
-    range: str = "5 V"
-    enabled: bool = True
-    coupling: str = "DC"
-    invert: bool = False
-    use_baseline: bool = False
+    signal_start: int
+    signal_stop: int
+    processing_method: str
+    baseline_start: int
+    baseline_stop: int
+    range: str
+    enabled: bool
+    coupling: str
+    invert: bool
+    use_baseline: bool
 
     def volts_to_adc(self, x):
         return mV2adc(x * 1e3, range_to_code[self.range], maxADC)
@@ -81,13 +81,15 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
 
     def __init__(self, name, config, config_filepath):
         super().__init__(name, config, config_filepath)
-        print(self._config.items())
+        print(toml.dumps(self._config))
+        # print(self._config.items())
 
         self._channels = []
-        for name, d in self._config["channels"].items():
-            channel = Channel(**d, name=name)
+        for physical_name, d in self._config["channels"].items():
+            channel = Channel(**d, physical_channel="ABCD".index(physical_name))
+            channel.name = channel.name if channel.name != "" else physical_name
             self._channels.append(channel)
-        self._channel_names = [c.name for c in self._channels if c.enabled]  # expected by parent
+        self._channel_names = [c.name for c in self._channels]  # expected by parent
         self._channel_units = {k: "V" for k in self._channel_names}  # expected by parent
 
         # check that all physical channels are unique
@@ -135,7 +137,7 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
     def _set_trigger(self):
         from picosdk.ps2000 import ps2000
         from picosdk.functions import assert_pico2000_ok
-        trigger_channel = [c for c in self._channels if c.name==self._config["trigger_name"]][0]
+        trigger_channel = self._channels["ABCD".index(self._config["trigger_channel"])]
         status = ps2000.ps2000_set_trigger(
             self.chandle,
             trigger_channel.physical_channel,  # todo: convert to physical channel
