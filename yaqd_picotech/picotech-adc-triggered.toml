@@ -37,7 +37,7 @@ symbols = ["DC", "AC"]
 type = "record"
 name = "channel"
 fields = [
-	{"name"="name", "type"="string", default=""},
+	# {"name"="label", "type"=["null", "string"], "default"="__null__"},
     {"name"="enabled", "type"="boolean", "default"=false},
     {"name"="coupling", "type"="adc_coupling", "default"="DC"},
 	{"name"="range", "type"="adc_range", "default"="5 V"},
@@ -74,6 +74,10 @@ Reduces output readings per trigger and increases time_interval in proportion.\
 [config.channels]
 type = "map"
 values = "channel"
+
+[config.channels.A]
+
+[config.channels.B]
 
 [config.trigger_channel]
 type = "string"

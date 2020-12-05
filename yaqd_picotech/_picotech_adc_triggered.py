@@ -56,6 +56,7 @@ maxADC = ctypes.c_uint16(2**15)
 @dataclass
 class Channel:
     name: str
+    # label: str
     physical_channel: int
     signal_start: int
     signal_stop: int
@@ -85,9 +86,9 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
         # print(self._config.items())
 
         self._channels = []
-        for physical_name, d in self._config["channels"].items():
-            channel = Channel(**d, physical_channel="ABCD".index(physical_name))
-            channel.name = channel.name if channel.name != "" else physical_name
+        for name, d in self._config["channels"].items():
+            channel = Channel(**d, physical_channel="ABCD".index(name), name=name)
+            # channel.label = channel.name if channel.label is None else name
             self._channels.append(channel)
         self._channel_names = [c.name for c in self._channels]  # expected by parent
         self._channel_units = {k: "V" for k in self._channel_names}  # expected by parent

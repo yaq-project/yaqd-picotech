@@ -18,7 +18,7 @@ class Channel:
     def __init__(
         self,
         nsamples,
-        name,
+        # label,
         range,
         signal_start,
         signal_stop,
@@ -30,10 +30,10 @@ class Channel:
         baseline_start,
         baseline_stop,
     ):
-        print(name, signal_start, signal_stop, range, nsamples)
+        print(signal_start, signal_stop, range, nsamples)
 
         self.enabled = qtypes.Bool(value=enabled)
-        self.name = qtypes.String(value=name)
+        # self.label = qtypes.String(value=label)
         self.physical_correspondance = qtypes.Number(
             decimals=0, limits=qtypes.NumberLimits(0, 4, None)
         )
@@ -79,7 +79,7 @@ class Channel:
 
     def get_widget(self):
         self.input_table = qtypes.widgets.InputTable()
-        self.input_table.append(self.name, "Name")
+        # self.input_table.append(self.label, "Label")
         self.input_table.append(self.range, "Range +/-V")
         self.input_table.append(self.signal_start_index, "Signal Start")
         self.input_table.append(self.signal_stop_index, "Signal Stop")
@@ -273,7 +273,7 @@ class ConfigWidget(QtWidgets.QWidget):
         # channels
         for k in config["channels"].keys():
             channel = self.channels[k]
-            # config["channels"][k]["name"] = channel.name.get()
+            # config["channels"][k]["label"] = channel.label.get()
             config["channels"][k]["range"] = channel.range.get()
             config["channels"][k]["enabled"] = channel.enabled.get()
             config["channels"][k]["invert"] = channel.invert.get()

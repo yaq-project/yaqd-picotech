@@ -1,6 +1,8 @@
 {
     "config": {
         "channels": {
+            "A": {},
+            "B": {},
             "type": "map",
             "values": "channel"
         },
@@ -281,11 +283,6 @@
         },
         {
             "fields": [
-                {
-                    "default": "",
-                    "name": "name",
-                    "type": "string"
-                },
                 {
                     "default": false,
                     "name": "enabled",
