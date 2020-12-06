@@ -331,6 +331,9 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
         # samples shape:  nsamples, shots
         return sample
 
+    def get_sample_time(self):
+        return self.time
+
     def get_channel_units(self):
         return "V"
 

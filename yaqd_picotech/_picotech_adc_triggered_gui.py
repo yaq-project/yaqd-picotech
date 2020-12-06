@@ -30,7 +30,7 @@ class Channel:
         baseline_start,
         baseline_stop,
     ):
-        print(signal_start, signal_stop, range, nsamples)
+        print(signal_start, signal_stop, range, nsamples)        
 
         self.enabled = qtypes.Bool(value=enabled)
         # self.label = qtypes.String(value=label)
@@ -111,6 +111,8 @@ class ConfigWidget(QtWidgets.QWidget):
         self.client = yaqc.Client(self.port)
         self.client.measure(loop=True)
         config = toml.loads(self.client.get_config())
+        self.time = self.client.get_sample_time()
+        # print(self.time.shape, self.time.min(), self.time.max())
         self.nsamples = config["max_samples"]
         self.channels = {}
         for name, d in config["channels"].items():
