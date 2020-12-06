@@ -152,8 +152,10 @@ class ConfigWidget(QtWidgets.QWidget):
         layout.addWidget(display_container_widget)
         # plot
         self.samples_plot_widget = Plot1D(yAutoRange=False)
-        self.samples_plot_scatter = self.samples_plot_widget.add_scatter(color=0.25)
-        self.samples_plot_active_scatter = self.samples_plot_widget.add_scatter()
+        colors = ["y", "c", "m", "b"][:len(self.channels)]
+        self.samples_plot_scatters = {
+            k: self.samples_plot_widget.add_scatter(c) for k, c in zip(self.channels.keys(), colors)
+        }
         self.samples_plot_widget.set_labels(xlabel="sample", ylabel="volts")
         self.samples_plot_max_voltage_line = self.samples_plot_widget.add_infinite_line(
             color="y", angle=0
@@ -171,8 +173,8 @@ class ConfigWidget(QtWidgets.QWidget):
         )
         display_layout.addWidget(self.samples_plot_widget)
         legend = self.samples_plot_widget.plot_object.addLegend()
-        legend.addItem(self.samples_plot_active_scatter, "channel samples")
-        legend.addItem(self.samples_plot_scatter, "other samples")
+        for k, s in self.samples_plot_scatters.items():
+            legend.addItem(s, k)
         style = pg.PlotDataItem(pen="y")
         legend.addItem(style, "voltage limits")
         style = pg.PlotDataItem(pen="g")
@@ -327,29 +329,10 @@ class ConfigWidget(QtWidgets.QWidget):
         shots: (channel, shot)
         """
         # sample from first shot
-        yi = self.client.get_measured_samples()[int(self.shot_channel_combo.get_index())][0]
-        self.samples_plot_scatter.clear()
-        self.samples_plot_scatter.setData(self.sample_xi, yi)
-        # active samples
-        self.samples_plot_active_scatter.hide()
-        current_channel_object = list(self.channels.values())[
-            self.samples_channel_combo.get_index()
-        ]
-        # ddk: samples_plot_active might be a special feature for highlighting which samples make up an output channel (e.g. w2_diff)
-        # ddk: this plot gives brighter colors and easier to see; use it!
-        if current_channel_object.enabled.get():
-            self.samples_plot_active_scatter.show()
-            # s = slice(current_channel_object.signal_start, current_channel_object.signal_stop, 1)
-            xi = self.sample_xi  # [s]
-            """
-            if current_channel_object.use_baseline.get():
-                s = slice(
-                    current_channel_object.baseline_start, current_channel_object.baseline_stop, 1
-                )
-                xi = np.hstack([xi, self.sample_xi[s]])
-                yyi = np.hstack([yyi, yi[s]])
-            """
-            self.samples_plot_active_scatter.setData(xi, yi)
+        yi = self.client.get_measured_samples()
+        for i, s in enumerate(self.samples_plot_scatters.values()):
+            s.clear()
+            s.setData(self.sample_xi, yi[i][0])
         # shots
         yi = self.client.get_measured_shots()[int(self.shot_channel_combo.get_index())]
         xi = np.arange(len(yi))
