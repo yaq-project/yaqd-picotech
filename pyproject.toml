@@ -12,7 +12,7 @@ description-file = "README.md"
 requires-python = ">=3.7"
 requires = [
   "yaqd-core>=2020.12.0",
-  "picosdk-python-wrappers>=1.0"
+  "picosdk>=1.0"
 ]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",

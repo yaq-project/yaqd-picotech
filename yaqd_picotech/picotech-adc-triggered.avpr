@@ -247,9 +247,9 @@
         }
     },
     "traits": [
-        "has-measure-trigger",
+        "is-sensor",
         "is-daemon",
-        "is-sensor"
+        "has-measure-trigger"
     ],
     "types": [
         {

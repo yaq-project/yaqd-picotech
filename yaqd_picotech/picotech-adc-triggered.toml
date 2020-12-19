@@ -52,6 +52,12 @@ fields = [
 
 [config]
 
+[config.make]
+default = "picotech"
+
+[config.model]
+default = "ps2000"
+
 [config.timebase]
 type = "int"
 default = 5
