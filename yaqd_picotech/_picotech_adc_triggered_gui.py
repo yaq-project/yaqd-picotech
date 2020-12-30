@@ -11,10 +11,15 @@ import toml
 import numpy as np  # type: ignore
 import time
 
-ranges = [0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20]
+# ranges = [0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20]
+# allowed_ranges = ["{0:0.2f}".format(r) for r in ranges]
 
 
 class Channel:
+
+    processing_methods = None
+    ranges = None
+
     def __init__(
         self,
         nsamples,
@@ -30,30 +35,37 @@ class Channel:
         baseline_start,
         baseline_stop,
     ):
-        print(signal_start, signal_stop, range, nsamples)        
-
+        range_ = range
+        sample_limits = qtypes.NumberLimits(0, nsamples - 1, None)
+        
         self.enabled = qtypes.Bool(value=enabled)
         # self.label = qtypes.String(value=label)
-        self.physical_correspondance = qtypes.Number(
-            decimals=0, limits=qtypes.NumberLimits(0, 4, None)
+        self.range = qtypes.Enum(
+            allowed_values=Channel.ranges,
+            initial_value=range_
         )
-        allowed_ranges = ["{0:0.2f}".format(r) for r in ranges]
-        range_id = [i for i, a in enumerate(ranges) if a == float(range[:-2])][0]
-        self.range = qtypes.Enum(allowed_values=allowed_ranges, initial_value=allowed_ranges[range_id])
         self.invert = qtypes.Bool(value=invert)
-        sample_limits = qtypes.NumberLimits(0, nsamples - 1, None)
         self.signal_start_index = qtypes.Number(
-            decimals=0, limits=sample_limits, value=signal_start
+            decimals=0,
+            limits=sample_limits,
+            value=signal_start
         )
-        self.signal_stop_index = qtypes.Number(decimals=0, limits=sample_limits, value=signal_stop)
-        processing_methods = ["average", "sum", "min", "max"]  # TODO: source from avpr
-        self.processing_method = qtypes.Enum(allowed_values=processing_methods, value=processing_method)
+        self.signal_stop_index = qtypes.Number(
+            decimals=0, limits=sample_limits, value=signal_stop
+        )
+        self.processing_method = qtypes.Enum(
+            allowed_values=Channel.processing_methods, value=processing_method
+        )
         self.use_baseline = qtypes.Bool(value=use_baseline)
         self.baseline_start_index = qtypes.Number(
-            decimals=0, limits=sample_limits, value=baseline_start if baseline_start is not None else 0
+            decimals=0,
+            limits=sample_limits,
+            value=baseline_start if baseline_start is not None else 0
         )
         self.baseline_stop_index = qtypes.Number(
-            decimals=0, limits=sample_limits, value=baseline_stop if baseline_stop is not None else 0
+            decimals=0,
+            limits=sample_limits,
+            value=baseline_stop if baseline_stop is not None else 0
         )
         # signals
         self.use_baseline.updated.connect(lambda: self.on_use_baseline())
@@ -74,7 +86,7 @@ class Channel:
         tuple
             (minimum_voltage, maximum_voltage)
         """
-        r = ranges[self.range.get_index()]
+        r = float(Channel.ranges[self.range.get_index()].split(" ")[0])
         return -r, r
 
     def get_widget(self):
@@ -115,6 +127,9 @@ class ConfigWidget(QtWidgets.QWidget):
         # print(self.time.shape, self.time.min(), self.time.max())
         self.nsamples = config["max_samples"]
         self.channels = {}
+        self.types = {v["name"]: v for v in self.client._protocol["types"]}
+        Channel.ranges = self.types["adc_range"]["symbols"]
+        Channel.processing_methods = self.types["processing_method"]["symbols"]
         for name, d in config["channels"].items():
             self.channels[name] = Channel(**d, nsamples=self.nsamples)
         self.create_frame()
@@ -274,6 +289,7 @@ class ConfigWidget(QtWidgets.QWidget):
     def write_config(self):
         # create dictionary, starting from existing
         config = toml.loads(self.client.get_config())
+        print(toml.dumps(self.client._protocol))
         # channels
         for k in config["channels"].keys():
             channel = self.channels[k]
@@ -281,12 +297,12 @@ class ConfigWidget(QtWidgets.QWidget):
             config["channels"][k]["range"] = channel.range.get()
             config["channels"][k]["enabled"] = channel.enabled.get()
             config["channels"][k]["invert"] = channel.invert.get()
-            config["channels"][k]["signal_start"] = channel.signal_start_index.get()
-            config["channels"][k]["signal_stop"] = channel.signal_stop_index.get()
+            config["channels"][k]["signal_start"] = int(channel.signal_start_index.get())
+            config["channels"][k]["signal_stop"] = int(channel.signal_stop_index.get())
             config["channels"][k]["processing_method"] = channel.processing_method.get()
             config["channels"][k]["use_baseline"] = channel.use_baseline.get()
-            config["channels"][k]["baseline_start"] = channel.baseline_start_index.get()
-            config["channels"][k]["baseline_stop"] = channel.baseline_stop_index.get()
+            config["channels"][k]["baseline_start"] = int(channel.baseline_start_index.get())
+            config["channels"][k]["baseline_stop"] = int(channel.baseline_stop_index.get())
         print(toml.dumps({self.client.id()["name"]: config}))
         # ddk: prevent writing until fields are properly tested
         print("writing cancelled")
