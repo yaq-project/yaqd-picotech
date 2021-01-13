@@ -81,7 +81,7 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
 
     def __init__(self, name, config, config_filepath):
         super().__init__(name, config, config_filepath)
-        print(toml.dumps(self._config))
+        # print(toml.dumps(self._config))
         # print(self._config.items())
 
         self._channels = []
@@ -208,7 +208,6 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
     def _create_task(self):
         from picosdk.ps2000 import ps2000  # type: ignore
         from picosdk.functions import assert_pico2000_ok  # type: ignore
-
         time_indisposed_ms = ctypes.c_int32()
         # pointer to approximate time DAQ takes to collect data
         # i.e. (sample interval) x (number of points required)
@@ -227,7 +226,6 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
         # print("calling _measure", self.measure_tries)
         samples = await self._loop.run_in_executor(None, self._measure_samples)
         # shape: (nshots, samples)
-        # print(samples["A"].shape)
         shots = {}
         # channels
         for channel in self._channels:
@@ -282,18 +280,10 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
                     break
                 sleep(wait)
             else:
-                # timeout; kill acquisition
-                # todo: call ps2000_stop, re-initialize
-                # from picosdk.ps2000 import ps2000  # type: ignore
-                # from picosdk.functions import assert_pico2000_ok  # type: ignore
-
-                # status = ps2000.ps2000_stop()
-                # assert_pico2000_ok(status)
                 return self._measure_samples()  # non-ideal: restarts all nshots if one fails
             sample = self._measure_sample()
             for name in self._channel_names:
                 samples[name][i] = sample[name]
-                # print(sample[name].min(), sample[name].max())
             if self.state_change:
                 self.state_change = False
                 return self._measure_samples()
@@ -329,30 +319,41 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
         # samples shape:  nsamples, shots
         return sample
 
-    def get_sample_time(self):
+    def close(self) -> None:
+        self.stop_looping()
+        from picosdk.ps2000 import ps2000  # type: ignore
+        from picosdk.functions import assert_pico2000_ok, PicoSDKCtypesError  # type: ignore
+        while True:
+            try:
+                status = ps2000.ps2000_close_unit(self.chandle)
+                assert_pico2000_ok(status)
+            except PicoSDKCtypesError:
+                print("close failed; retrying")
+                sleep(0.1)
+            else:
+                break
+        return
+
+    def get_sample_time(self) -> np.ndarray:
         return self.time
 
-    def get_channel_units(self):
+    def get_channel_units(self) -> str:
         return "V"
 
-    def get_measured_samples(self):
+    def get_measured_samples(self) -> np.ndarray:
         """shape [channels, shots, samples]"""
         out = np.stack([arr for arr in self._samples.values()])
-        # print("get_measured_samples")
-        # print(out.shape, out[:,0].min())
         return out
 
-    def get_measured_shots(self):
+    def get_measured_shots(self) -> np.ndarray:
         """shape (channel, shot)"""
         out = np.stack([arr for arr in self._shots.values()])
-        # print("get_measured_shots")
-        # print(out.shape, out.dtype, out.min(), out.max())
         return out
 
-    def get_nshots(self):
+    def get_nshots(self) -> bool:
         return self._state["nshots"]
 
-    def set_nshots(self, nshots):
+    def set_nshots(self, nshots) -> None:
         """Set number of shots."""
         assert nshots > 0
         self.state_change = True
