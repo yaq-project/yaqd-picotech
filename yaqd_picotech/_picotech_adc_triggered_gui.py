@@ -289,7 +289,6 @@ class ConfigWidget(QtWidgets.QWidget):
     def write_config(self):
         # create dictionary, starting from existing
         config = toml.loads(self.client.get_config())
-        print(toml.dumps(self.client._protocol))
         # channels
         for k in config["channels"].keys():
             channel = self.channels[k]
@@ -303,19 +302,28 @@ class ConfigWidget(QtWidgets.QWidget):
             config["channels"][k]["use_baseline"] = channel.use_baseline.get()
             config["channels"][k]["baseline_start"] = int(channel.baseline_start_index.get())
             config["channels"][k]["baseline_stop"] = int(channel.baseline_stop_index.get())
-        print(toml.dumps({self.client.id()["name"]: config}))
-        # ddk: prevent writing until fields are properly tested
-        print("writing cancelled")
-        return
+        """
+        print(toml.dumps({
+            self.client.id()["name"]: {"channels": config["channels"]}
+        }))
+        """
+        # print("writing cancelled")
+        # return
         # write config
         with open(self.client.get_config_filepath(), 'w') as f:
-            toml.dump(config, f)
+            toml.dump(
+                {self.client.id()["name"]: config},
+                f
+            )
         self.client.shutdown(restart=True)
         while True:
             try:
                 self.client = yaqc.Client(self.port)
             except:
+                print("tried to connect")
                 time.sleep(0.1)
+            else:
+                break
 
     def on_nshots_updated(self):
         new = int(self.nshots.get())
