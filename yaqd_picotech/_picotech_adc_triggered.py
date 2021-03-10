@@ -11,6 +11,7 @@ from picosdk.functions import adc2mV, mV2adc  # type: ignore
 from typing import Dict, Any, List
 from yaqd_core import IsSensor, IsDaemon, HasMeasureTrigger
 
+
 def process_samples(method, samples, axis=0):
     # samples arry shape: (sample, shot)
     if method == "average":
@@ -208,6 +209,7 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
     def _create_task(self):
         from picosdk.ps2000 import ps2000  # type: ignore
         from picosdk.functions import assert_pico2000_ok  # type: ignore
+
         time_indisposed_ms = ctypes.c_int32()
         # pointer to approximate time DAQ takes to collect data
         # i.e. (sample interval) x (number of points required)
@@ -323,6 +325,7 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
         self.stop_looping()
         from picosdk.ps2000 import ps2000  # type: ignore
         from picosdk.functions import assert_pico2000_ok, PicoSDKCtypesError  # type: ignore
+
         while True:
             try:
                 status = ps2000.ps2000_close_unit(self.chandle)
