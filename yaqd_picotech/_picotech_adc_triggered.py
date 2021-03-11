@@ -5,12 +5,13 @@ import ctypes
 import numpy as np  # type: ignore
 from dataclasses import dataclass
 from time import sleep
-import toml
+import os
+import imp
+# import toml
 
 from picosdk.functions import adc2mV, mV2adc  # type: ignore
 from typing import Dict, Any, List
-from yaqd_core import IsSensor, IsDaemon, HasMeasureTrigger
-
+from yaqd_core import IsSensor, IsDaemon, HasMeasureTrigger, HasMapping
 
 def process_samples(method, samples, axis=0):
     # samples arry shape: (sample, shot)
@@ -76,7 +77,7 @@ class Channel:
         return np.array(adc2mV(x, range_to_code[self.range], maxADC)) / 1e3
 
 
-class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
+class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
     # ddk:  order matters for base classes?
     _kind = "picotech-adc-triggered"
 
@@ -88,10 +89,11 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
         self._channels = []
         for name, d in self._config["channels"].items():
             channel = Channel(**d, physical_channel="ABCD".index(name), name=name)
-            # channel.label = channel.name if channel.label is None else name
             self._channels.append(channel)
         self._channel_names = [c.name for c in self._channels]  # expected by parent
+        self._raw_channel_names = self._channel_names.copy()  # from config only
         self._channel_units = {k: "V" for k in self._channel_names}  # expected by parent
+        self._raw_channel_units = self._channel_units.copy()  # from config only
 
         # check that all physical channels are unique
         x = []
@@ -104,7 +106,12 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
         # finish
         self._open_unit()
         self.state_change = False
-        # self.measure_tries = 0
+        path = self._config["shots_processing_path"]
+        name = os.path.basename(path).split(".")[0]
+        directory = os.path.dirname(path)
+        f, p, d = imp.find_module(name, [directory])
+        self.processing_module = imp.load_module(name, f, p, d)
+
         self.measure(loop=self._config["loop_at_startup"])
 
     def _open_unit(self):
@@ -192,6 +199,7 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
         )
         self.time_interval = time_interval.value
         self.time_units = time_units.value
+        self._mapping_units["time"] = time_units.value
         """
         # ddk: time according to picotech example, but I believe spacing is off by 1/nsamples...
         self.time = np.linspace(
@@ -224,52 +232,37 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
         self.time_indisposed = time_indisposed_ms.value / 1e3
 
     async def _measure(self):
-        # self.measure_tries += 1
-        # print("calling _measure", self.measure_tries)
         samples = await self._loop.run_in_executor(None, self._measure_samples)
-        # shape: (nshots, samples)
-        shots = {}
-        # channels
-        for channel in self._channels:
-            if not channel.enabled:
-                continue
-            shots[channel.name] = np.empty((self._state["nshots"]))  # necessary?
-            # signal:  collapse intra-shot (samples) time dimension
-            signal_samples = samples[channel.name][
-                :, channel.signal_start : channel.signal_stop + 1
-            ]
-            signal_shots = process_samples(channel.processing_method, signal_samples, axis=1)
-            # baseline
-            if not channel.use_baseline:
-                shots[channel.name] = signal_shots
-            else:
-                baseline_samples = samples[channel.name][
-                    :, channel.baseline_start : channel.baseline_stop + 1
-                ]
-                baseline_shots = process_samples(
-                    channel.processing_method, baseline_samples, axis=1
-                )
-                shots[channel.name] = signal_shots - baseline_shots
-            if channel.invert:
-                shots[channel.name] *= -1
+        # samples value shapes: (nshots, samples)
+        out, out_names, out_units = self.processing_module.process(
+            samples,
+            self._raw_channel_names,
+            self._raw_channel_units
+        )
         # finish
         if self.state_change:
             self.state_change = False
             return self._measure()
+        self._channel_names = out_names
+        self._channel_units = out_units
         self._samples = samples
-        self._shots = shots
-        # collapse shots for readout:
-        out = {c.name: process_samples(c.processing_method, shots[c.name]) for c in self._channels}
+        out = {k: v for k, v in zip(self._channel_names, out)}
         return out
 
     def _measure_samples(self):
-        """loop through shots, return aggregate"""
+        """
+        loop through shots
+
+        returns
+        -------
+            dict key:channel, value: ndarray[shot][sample]
+        """
         from picosdk.ps2000 import ps2000  # type: ignore
         from picosdk.functions import assert_pico2000_ok  # type: ignore
 
         samples = {
             name: np.zeros((self._state["nshots"], self._config["max_samples"]), dtype=np.float)
-            for name in self._channel_names
+            for name in self._raw_channel_names
         }
         self._create_task()
         i = 0
@@ -284,7 +277,7 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
             else:
                 return self._measure_samples()  # non-ideal: restarts all nshots if one fails
             sample = self._measure_sample()
-            for name in self._channel_names:
+            for name in self._raw_channel_names:
                 samples[name][i] = sample[name]
             if self.state_change:
                 self.state_change = False
@@ -340,20 +333,12 @@ class PicotechAdcTriggered(HasMeasureTrigger, IsSensor, IsDaemon):
     def get_sample_time(self) -> np.ndarray:
         return self.time
 
-    def get_channel_units(self) -> str:
-        return "V"
-
     def get_measured_samples(self) -> np.ndarray:
         """shape [channels, shots, samples]"""
         out = np.stack([arr for arr in self._samples.values()])
         return out
 
-    def get_measured_shots(self) -> np.ndarray:
-        """shape (channel, shot)"""
-        out = np.stack([arr for arr in self._shots.values()])
-        return out
-
-    def get_nshots(self) -> bool:
+    def get_nshots(self) -> int:
         return self._state["nshots"]
 
     def set_nshots(self, nshots) -> None:
