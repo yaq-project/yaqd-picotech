@@ -37,22 +37,15 @@ class Channel:
     ):
         range_ = range
         sample_limits = qtypes.NumberLimits(0, nsamples - 1, None)
-        
+
         self.enabled = qtypes.Bool(value=enabled)
         # self.label = qtypes.String(value=label)
-        self.range = qtypes.Enum(
-            allowed_values=Channel.ranges,
-            initial_value=range_
-        )
+        self.range = qtypes.Enum(allowed_values=Channel.ranges, initial_value=range_)
         self.invert = qtypes.Bool(value=invert)
         self.signal_start_index = qtypes.Number(
-            decimals=0,
-            limits=sample_limits,
-            value=signal_start
+            decimals=0, limits=sample_limits, value=signal_start
         )
-        self.signal_stop_index = qtypes.Number(
-            decimals=0, limits=sample_limits, value=signal_stop
-        )
+        self.signal_stop_index = qtypes.Number(decimals=0, limits=sample_limits, value=signal_stop)
         self.processing_method = qtypes.Enum(
             allowed_values=Channel.processing_methods, value=processing_method
         )
@@ -60,12 +53,12 @@ class Channel:
         self.baseline_start_index = qtypes.Number(
             decimals=0,
             limits=sample_limits,
-            value=baseline_start if baseline_start is not None else 0
+            value=baseline_start if baseline_start is not None else 0,
         )
         self.baseline_stop_index = qtypes.Number(
             decimals=0,
             limits=sample_limits,
-            value=baseline_stop if baseline_stop is not None else 0
+            value=baseline_stop if baseline_stop is not None else 0,
         )
         # signals
         self.use_baseline.updated.connect(lambda: self.on_use_baseline())
@@ -167,9 +160,10 @@ class ConfigWidget(QtWidgets.QWidget):
         layout.addWidget(display_container_widget)
         # plot
         self.samples_plot_widget = Plot1D(yAutoRange=False)
-        colors = ["y", "c", "m", "b"][:len(self.channels)]
+        colors = ["y", "c", "m", "b"][: len(self.channels)]
         self.samples_plot_scatters = {
-            k: self.samples_plot_widget.add_scatter(c) for k, c in zip(self.channels.keys(), colors)
+            k: self.samples_plot_widget.add_scatter(c)
+            for k, c in zip(self.channels.keys(), colors)
         }
         self.samples_plot_widget.set_labels(xlabel="sample", ylabel="volts")
         self.samples_plot_max_voltage_line = self.samples_plot_widget.add_infinite_line(
@@ -310,11 +304,8 @@ class ConfigWidget(QtWidgets.QWidget):
         # print("writing cancelled")
         # return
         # write config
-        with open(self.client.get_config_filepath(), 'w') as f:
-            toml.dump(
-                {self.client.id()["name"]: config},
-                f
-            )
+        with open(self.client.get_config_filepath(), "w") as f:
+            toml.dump({self.client.id()["name"]: config}, f)
         self.client.shutdown(restart=True)
         while True:
             try:
