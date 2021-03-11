@@ -13,20 +13,6 @@ from picosdk.functions import adc2mV, mV2adc  # type: ignore
 from typing import Dict, Any, List
 from yaqd_core import IsSensor, IsDaemon, HasMeasureTrigger, HasMapping
 
-def process_samples(method, samples, axis=0):
-    # samples arry shape: (sample, shot)
-    if method == "average":
-        shots = np.mean(samples, axis=axis)
-    elif method == "sum":
-        shots = np.sum(samples, axis=axis)
-    elif method == "min":
-        shots = np.min(samples, axis=axis)
-    elif method == "max":
-        shots = np.max(samples, axis=axis)
-    else:
-        raise KeyError("sample processing method not recognized")
-    return shots
-
 
 # todo: parse range codes based on psx000.PSx000_VOLTAGE_RANGE dict
 # ranges = [0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20]
@@ -59,16 +45,10 @@ class Channel:
     name: str
     # label: str
     physical_channel: int
-    signal_start: int
-    signal_stop: int
-    processing_method: str
-    baseline_start: int
-    baseline_stop: int
     range: str
     enabled: bool
     coupling: str
     invert: bool
-    use_baseline: bool
 
     def volts_to_adc(self, x):
         return mV2adc(x * 1e3, range_to_code[self.range], maxADC)
@@ -235,7 +215,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         samples = await self._loop.run_in_executor(None, self._measure_samples)
         # samples value shapes: (nshots, samples)
         out, out_names, out_units = self.processing_module.process(
-            samples,
+            samples.values(),
             self._raw_channel_names,
             self._raw_channel_units
         )
@@ -247,6 +227,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         self._channel_units = out_units
         self._samples = samples
         out = {k: v for k, v in zip(self._channel_names, out)}
+        self._channel_shapes = {k:v.shape for k, v in out.items()}
         return out
 
     def _measure_samples(self):

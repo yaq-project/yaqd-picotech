@@ -21,5 +21,5 @@ def process(arrs, names, units):
     """
     out = [arr.mean() for arr in arrs]
     out_names = [name + "_mean" for name in names]
-    out_units = [unit for unit in units]
+    out_units = {name:"V" for name in out_names}
     return [out, out_names, out_units]
