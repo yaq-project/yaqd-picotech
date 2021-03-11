@@ -17,7 +17,7 @@ def process(arrs, names, units):
     Returns
     -------
     list
-        [ndarray (channels), list of channel names, list of channel units]
+        [ndarray (channels), list of channel names, list of channel units, list of mappings (optional)]
     """
     out = [arr.mean() for arr in arrs]
     out_names = [name + "_mean" for name in names]

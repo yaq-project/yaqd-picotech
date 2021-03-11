@@ -71,9 +71,12 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
             channel = Channel(**d, physical_channel="ABCD".index(name), name=name)
             self._channels.append(channel)
         self._channel_names = [c.name for c in self._channels]  # expected by parent
-        self._raw_channel_names = self._channel_names.copy()  # from config only
         self._channel_units = {k: "V" for k in self._channel_names}  # expected by parent
+
+        self._raw_channel_names = self._channel_names.copy()  # from config only
         self._raw_channel_units = self._channel_units.copy()  # from config only
+
+        self._mapping_units["time"] = "ns"  # I believe this is invariant of collection...
 
         # check that all physical channels are unique
         x = []
@@ -178,8 +181,6 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
             ctypes.byref(maxSamplesReturn),  # pointer to actual number of available samples
         )
         self.time_interval = time_interval.value
-        self.time_units = time_units.value
-        self._mapping_units["time"] = time_units.value
         """
         # ddk: time according to picotech example, but I believe spacing is off by 1/nsamples...
         self.time = np.linspace(
@@ -214,20 +215,29 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
     async def _measure(self):
         samples = await self._loop.run_in_executor(None, self._measure_samples)
         # samples value shapes: (nshots, samples)
-        out, out_names, out_units = self.processing_module.process(
+        self._samples = samples
+        # process
+        out = self.processing_module.process(
             samples.values(),
             self._raw_channel_names,
             self._raw_channel_units
         )
+        if len(out) == 4:
+            out_sig, out_names, out_units, out_mappings = out
+        else:
+            out_sig, out_names, out_units = out
+            out_mappings = {name: [] for name in out_names}
         # finish
+        self._channel_names = out_names
+        self._channel_units = out_units
+        self._channel_mappings = out_mappings
+        out = {k: v for k, v in zip(self._channel_names, out_sig)}
+        for k, v in out.items():
+            self._channel_shapes[k] = [] if type(v) in [float, int] else v.shape
+        self._channel_shapes = {k:v.shape for k, v in out.items()}
         if self.state_change:
             self.state_change = False
             return self._measure()
-        self._channel_names = out_names
-        self._channel_units = out_units
-        self._samples = samples
-        out = {k: v for k, v in zip(self._channel_names, out)}
-        self._channel_shapes = {k:v.shape for k, v in out.items()}
         return out
 
     def _measure_samples(self):
