@@ -62,13 +62,14 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         super().__init__(name, config, config_filepath)
         # print(toml.dumps(self._config))
         # print(self._config.items())
-
         self._raw_channels = []
         for name, d in self._config["channels"].items():
             channel = RawChannel(**d, physical_channel="ABCD".index(name), name=name)
             self._raw_channels.append(channel)
         self._raw_channel_names = [c.name for c in self._raw_channels]
         self._raw_channel_units = {k: "V" for k in self._channel_names}
+        self._raw_inverts = [[1, -1][c.invert] for c in self._raw_channels]
+        self._samples = {}
 
         # ddk: I believe these are the native units of all models
         self._mapping_units["time"] = "ns"
@@ -211,7 +212,9 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
     async def _measure(self) -> Dict[str, Any]:
         samples = await self._loop.run_in_executor(None, self._measure_samples)
         # samples value shapes: (nshots, samples)
-        self._samples = samples
+        # invert
+        for k, inv in zip(samples.keys(), self._raw_inverts):
+            self._samples[k] = samples[k] * inv
         # process
         out = self.processing_module.process(
             samples.values(),
