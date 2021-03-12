@@ -211,7 +211,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         assert_pico2000_ok(status)
         self.time_indisposed = time_indisposed_ms.value / 1e3
 
-    async def _measure(self) -> Dict[str, Any]:
+    async def _measure(self):
         samples = await self._loop.run_in_executor(None, self._measure_samples)
         # samples value shapes: (nshots, samples)
         # invert
@@ -240,7 +240,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
             return self._measure()
         return {k: v for k, v in zip(out_names, out_sig)}
 
-    def _measure_samples(self) -> Dict[str, np.ndarray]:
+    def _measure_samples(self):
         """
         loop through shots
 
@@ -252,7 +252,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         from picosdk.functions import assert_pico2000_ok  # type: ignore
 
         samples = {
-            name: np.zeros((self._state["nshots"], self._config["max_samples"]), dtype=np.float)
+            name: np.zeros((self._state["nshots"], self._config["max_samples"]), dtype=float)
             for name in self._raw_channel_names
         }
         self._create_task()
