@@ -37,13 +37,11 @@ wave_type_to_code = {
 # maximum ADC count value
 # drivers normalize to 16 bit (15 bit signed) regardless of resolution
 maxADC = ctypes.c_uint16(2 ** 15)
-# ddk: ignore chopper class for now; only two physical channels to test
 
 
 @dataclass
-class Channel:
+class RawChannel:
     name: str
-    # label: str
     physical_channel: int
     range: str
     enabled: bool
@@ -58,7 +56,6 @@ class Channel:
 
 
 class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
-    # ddk:  order matters for base classes?
     _kind = "picotech-adc-triggered"
 
     def __init__(self, name, config, config_filepath):
@@ -66,35 +63,34 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         # print(toml.dumps(self._config))
         # print(self._config.items())
 
-        self._channels = []
+        self._raw_channels = []
         for name, d in self._config["channels"].items():
-            channel = Channel(**d, physical_channel="ABCD".index(name), name=name)
-            self._channels.append(channel)
-        self._channel_names = [c.name for c in self._channels]  # expected by parent
-        self._channel_units = {k: "V" for k in self._channel_names}  # expected by parent
+            channel = RawChannel(**d, physical_channel="ABCD".index(name), name=name)
+            self._raw_channels.append(channel)
+        self._raw_channel_names = [c.name for c in self._raw_channels]
+        self._raw_channel_units = {k: "V" for k in self._channel_names}
 
-        self._raw_channel_names = self._channel_names.copy()  # from config only
-        self._raw_channel_units = self._channel_units.copy()  # from config only
-
-        self._mapping_units["time"] = "ns"  # I believe this is invariant of collection...
+        # ddk: I believe these are the native units of all models
+        self._mapping_units["time"] = "ns"
 
         # check that all physical channels are unique
         x = []
-        x += [c.physical_channel for c in self._channels]
+        x += [c.physical_channel for c in self._raw_channels]
         assert len(set(x)) == len(x)
 
         # only support ps2000 currently
         assert self._config["model"].lower() == "ps2000"
 
-        # finish
-        self._open_unit()
-        self.state_change = False
+        # processing module
         path = self._config["shots_processing_path"]
         name = os.path.basename(path).split(".")[0]
         directory = os.path.dirname(path)
         f, p, d = imp.find_module(name, [directory])
         self.processing_module = imp.load_module(name, f, p, d)
 
+        # finish
+        self._open_unit()
+        self.state_change = False
         self.measure(loop=self._config["loop_at_startup"])
 
     def _open_unit(self):
@@ -115,7 +111,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         from picosdk.ps2000 import ps2000  # type: ignore
         from picosdk.functions import assert_pico2000_ok  # type: ignore
 
-        for c in self._channels:
+        for c in self._raw_channels:
             status = ps2000.ps2000_set_channel(
                 self.chandle,
                 c.physical_channel,  # channel
@@ -129,7 +125,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         from picosdk.ps2000 import ps2000  # type: ignore
         from picosdk.functions import assert_pico2000_ok  # type: ignore
 
-        trigger_channel = self._channels["ABCD".index(self._config["trigger_channel"])]
+        trigger_channel = self._raw_channels["ABCD".index(self._config["trigger_channel"])]
         status = ps2000.ps2000_set_trigger(
             self.chandle,
             trigger_channel.physical_channel,  # todo: convert to physical channel
@@ -212,7 +208,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         assert_pico2000_ok(status)
         self.time_indisposed = time_indisposed_ms.value / 1e3
 
-    async def _measure(self):
+    async def _measure(self) -> Dict[str, Any]:
         samples = await self._loop.run_in_executor(None, self._measure_samples)
         # samples value shapes: (nshots, samples)
         self._samples = samples
@@ -227,20 +223,19 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         else:
             out_sig, out_names, out_units = out
             out_mappings = {name: [] for name in out_names}
+        if self._measurement_id == 0:
+                self._channel_names = out_names
+                self._channel_units = out_units
+                self._channel_mappings = out_mappings
+                for k, v in zip(out_names, out_sig):
+                    self._channel_shapes[k] = [] if type(v) in [float, int] else v.shape
         # finish
-        self._channel_names = out_names
-        self._channel_units = out_units
-        self._channel_mappings = out_mappings
-        out = {k: v for k, v in zip(self._channel_names, out_sig)}
-        for k, v in out.items():
-            self._channel_shapes[k] = [] if type(v) in [float, int] else v.shape
-        self._channel_shapes = {k:v.shape for k, v in out.items()}
         if self.state_change:
             self.state_change = False
             return self._measure()
-        return out
+        return {k: v for k, v in zip(out_names, out_sig)}
 
-    def _measure_samples(self):
+    def _measure_samples(self) -> Dict[str, np.ndarray]:
         """
         loop through shots
 
@@ -277,7 +272,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
             i += 1
         return samples
 
-    def _measure_sample(self):
+    def _measure_sample(self) -> Dict[str, List]:
         """
         retrieve samples from single shot
         """
@@ -286,7 +281,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
 
         # create buffers for data
         buffers = [None] * 4
-        for c in self._channels:
+        for c in self._raw_channels:
             if c.enabled:
                 buffers[c.physical_channel] = (ctypes.c_int16 * self._config["max_samples"])()
         overflow = ctypes.c_int16()  # bit pattern on whether overflow has occurred
@@ -301,7 +296,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         assert_pico2000_ok(status)
 
         # todo: match physical channel to buffer; currently assumes order preserved
-        sample = {c.name: c.adc_to_volts(b) for c, b in zip(self._channels, buffers)}
+        sample = {c.name: c.adc_to_volts(b) for c, b in zip(self._raw_channels, buffers)}
         # samples shape:  nsamples, shots
         return sample
 
