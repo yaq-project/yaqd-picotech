@@ -18,23 +18,22 @@ import time
 class Channel:
 
     ranges = None
+    couplings = None
 
     def __init__(
         self,
         nsamples,
-        # label,
         range,
         enabled,
         coupling,
         invert,
     ):
         range_ = range
-        sample_limits = qtypes.NumberLimits(0, nsamples - 1, None)
 
         self.enabled = qtypes.Bool(value=enabled)
-        # self.label = qtypes.String(value=label)
         self.range = qtypes.Enum(allowed_values=Channel.ranges, initial_value=range_)
         self.invert = qtypes.Bool(value=invert)
+        self.coupling = qtypes.Enum(allowed_values=Channel.couplings, initial_value=coupling)
 
     def get_range(self):
         """
@@ -48,9 +47,9 @@ class Channel:
 
     def get_widget(self):
         self.input_table = qtypes.widgets.InputTable()
-        # self.input_table.append(self.label, "Label")
         self.input_table.append(self.range, "Range +/-V")
         self.input_table.append(self.invert, "Invert")
+        self.input_table.append(self.coupling, "Coupling")
         return self.input_table
 
 
@@ -67,6 +66,7 @@ class ConfigWidget(QtWidgets.QWidget):
         self.channels = {}
         self.types = {v["name"]: v for v in self.client._protocol["types"]}
         Channel.ranges = self.types["adc_range"]["symbols"]
+        Channel.couplings = self.types["adc_coupling"]["symbols"]
         for name, d in config["channels"].items():
             self.channels[name] = Channel(**d, nsamples=self.nsamples)
         self.create_frame()
@@ -144,6 +144,7 @@ class ConfigWidget(QtWidgets.QWidget):
         # channel_combobox
         allowed_values = list(self.channels.keys())
         self.samples_channel_combo = qtypes.Enum(allowed_values=allowed_values, name="Channels")
+        self.samples_channel_combo.updated.connect(self.update_samples_tab)
         input_table = qtypes.widgets.InputTable()
         input_table.append(self.samples_channel_combo)
         settings_layout.addWidget(input_table)
@@ -152,7 +153,6 @@ class ConfigWidget(QtWidgets.QWidget):
         for channel in self.channels.values():
             widget = channel.get_widget()
             settings_layout.addWidget(widget)
-            # widget.hide()
             self.channel_widgets.append(widget)
         # apply button
         self.apply_channel_button = qtypes.widgets.PushButton("APPLY CHANGES", background="green")
