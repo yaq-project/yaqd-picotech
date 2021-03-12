@@ -119,13 +119,9 @@ default = 50
 
 [messages]
 
-[messages.get_sample_time]
-response = "ndarray"
-doc = "Get the time axis for the samples."
-
 [messages.get_measured_samples]
 response = "ndarray"
-doc = "Get an array of shape (channel, sample, shot)."
+doc = "Get full raw channel data. Returns array of shape (channel, sample, shot)."
 
 [messages.get_nshots]
 doc = "Get the currently planned number of shots."
@@ -134,4 +130,3 @@ response = "int"
 [messages.set_nshots]
 doc = "Set the number of shots to acquire."
 request = [{"name"="nshots", "type"="int"}]
-

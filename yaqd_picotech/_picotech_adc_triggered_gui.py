@@ -60,8 +60,7 @@ class ConfigWidget(QtWidgets.QWidget):
         self.client = yaqc.Client(self.port)
         self.client.measure(loop=True)
         config = toml.loads(self.client.get_config())
-        self.time = self.client.get_sample_time()
-        # print(self.time.shape, self.time.min(), self.time.max())
+        self.time = self.client.get_mappings()['time']
         self.nsamples = config["max_samples"]
         self.channels = {}
         self.types = {v["name"]: v for v in self.client._protocol["types"]}

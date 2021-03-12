@@ -186,9 +186,11 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
             self._config.max_samples
         ) / 1e6
         """
-        self.time = np.arange(self._config["max_samples"], dtype=float) * self.time_interval
+        time = np.arange(self._config["max_samples"], dtype=float) * self.time_interval
         # offset for delay
-        self.time += self.time.max() * self._config["trigger_delay"] / 100
+        time += time.max() * self._config["trigger_delay"] / 100
+        self._mappings["time"] = time
+
         # todo: readout params on failure
         assert_pico2000_ok(status)
 
@@ -318,9 +320,6 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
             else:
                 break
         return
-
-    def get_sample_time(self) -> np.ndarray:
-        return self.time
 
     def get_measured_samples(self) -> np.ndarray:
         """shape [channels, shots, samples]"""
