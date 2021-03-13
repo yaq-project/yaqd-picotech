@@ -285,22 +285,18 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         from picosdk.functions import assert_pico2000_ok  # type: ignore
 
         # create buffers for data
-        buffers = [None] * 4
-        for c in self._raw_channels:
-            if c.enabled:
-                buffers[c.physical_channel] = (ctypes.c_int16 * self._config["max_samples"])()
+        buffers = [(ctypes.c_int16 * self._config["max_samples"])()] * 4
         overflow = ctypes.c_int16()  # bit pattern on whether overflow has occurred
 
         status = ps2000.ps2000_get_values(
             self.chandle,  # handle
             # pointers to channel buffers
-            *[ctypes.byref(b) if b is not None else None for b in buffers],
+            *[ctypes.byref(b) for b in buffers],
             ctypes.byref(overflow),  # pointer to overflow
             ctypes.c_int32(self._config["max_samples"]),  # number of values
         )
         assert_pico2000_ok(status)
 
-        # todo: match physical channel to buffer; currently assumes order preserved
         sample = {c.name: c.adc_to_volts(b) for c, b in zip(self._raw_channels, buffers)}
         # samples shape:  nsamples, shots
         return sample
