@@ -133,6 +133,18 @@
             "request": [],
             "response": "boolean"
         },
+        "get_channel_mappings": {
+            "doc": "Defines which mapping keys apply to which channel keys. Each channel may have zero or many mappings. Mappings must broadcast into corresponding channels.",
+            "origin": "has-mapping",
+            "request": [],
+            "response": {
+                "type": "map",
+                "values": {
+                    "items": "string",
+                    "type": "array"
+                }
+            }
+        },
         "get_channel_names": {
             "doc": "Get current channel names.",
             "origin": "is-sensor",
@@ -178,6 +190,37 @@
             "request": [],
             "response": "string"
         },
+        "get_mapping_id": {
+            "doc": "Mapping ID. This integer increments every time the mapping is updated. Clients can safely check this id to verify that their cached mappings are correct, if desired.",
+            "origin": "has-mapping",
+            "request": [],
+            "response": "int"
+        },
+        "get_mapping_units": {
+            "doc": "Must return units for every mapping. Units can be null.",
+            "origin": "has-mapping",
+            "request": [],
+            "response": {
+                "type": "map",
+                "values": [
+                    "null",
+                    "string"
+                ]
+            }
+        },
+        "get_mappings": {
+            "doc": "Mappings themselves.",
+            "origin": "has-mapping",
+            "request": [],
+            "response": {
+                "type": "map",
+                "values": [
+                    "null",
+                    "ndarray",
+                    "double"
+                ]
+            }
+        },
         "get_measured": {
             "doc": "Get most recent measured value.",
             "origin": "is-sensor",
@@ -191,12 +234,7 @@
             }
         },
         "get_measured_samples": {
-            "doc": "Get an array of shape (channel, sample, shot).",
-            "request": [],
-            "response": "ndarray"
-        },
-        "get_measured_shots": {
-            "doc": "Get an array of shape (channel, shot)",
+            "doc": "Get full raw channel data. Returns array of shape (channel, sample, shot).",
             "request": [],
             "response": "ndarray"
         },
@@ -204,11 +242,6 @@
             "doc": "Get the currently planned number of shots.",
             "request": [],
             "response": "int"
-        },
-        "get_sample_time": {
-            "doc": "Get the time axis for the samples.",
-            "request": [],
-            "response": "ndarray"
         },
         "get_state": {
             "doc": "Get version of the running daemon",
@@ -278,9 +311,10 @@
         }
     },
     "traits": [
-        "has-measure-trigger",
+        "is-sensor",
         "is-daemon",
-        "is-sensor"
+        "has-measure-trigger",
+        "has-mapping"
     ],
     "types": [
         {
@@ -335,39 +369,9 @@
                     "type": "adc_range"
                 },
                 {
-                    "default": 0,
-                    "name": "signal_start",
-                    "type": "int"
-                },
-                {
-                    "default": 1,
-                    "name": "signal_stop",
-                    "type": "int"
-                },
-                {
                     "default": false,
                     "name": "invert",
                     "type": "boolean"
-                },
-                {
-                    "default": "average",
-                    "name": "processing_method",
-                    "type": "processing_method"
-                },
-                {
-                    "default": false,
-                    "name": "use_baseline",
-                    "type": "boolean"
-                },
-                {
-                    "default": 0,
-                    "name": "baseline_start",
-                    "type": "int"
-                },
-                {
-                    "default": 0,
-                    "name": "baseline_stop",
-                    "type": "int"
                 }
             ],
             "name": "channel",

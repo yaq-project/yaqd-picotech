@@ -1,31 +1,24 @@
-[test]
-port = 39003
-trigger_self = true
-trigger_name = "A"
+[scope]
 loop_at_startup = true
+max_samples = 200
+model = "ps2000"
+oversample = 16
+timebase = 5
+trigger_delay = -15
+trigger_rising = true
+trigger_self = true
+trigger_threshold = 500000
+port = 39003
+shots_processing_path = "~/Documents/source/yaqd-picotech/examples/process_module.py"
+trigger_channel = "B"
 
-[test.channels.A]
-physical_channel = 0
-# signal_start = 0
-# signal_stop = 20
-range = "2 V"
+[scope.channels.A]
 enabled = true
 coupling = "DC"
-invert = false
-processing_method = "average"
-use_baseline = false
-baseline_start = 0
-baseline_stop = 0
-
-[test.channels.B]
-physical_channel = 1
-# signal_start = 0
-# signal_stop = 20
 range = "2 V"
+
+[scope.channels.B]
 enabled = true
 coupling = "DC"
+range = "5 V"
 invert = false
-processing_method = "average"
-use_baseline = false
-baseline_start = 0
-baseline_stop = 0

@@ -17,60 +17,23 @@ import time
 
 class Channel:
 
-    processing_methods = None
     ranges = None
+    couplings = None
 
     def __init__(
         self,
         nsamples,
-        # label,
         range,
-        signal_start,
-        signal_stop,
-        processing_method,
         enabled,
         coupling,
         invert,
-        use_baseline,
-        baseline_start,
-        baseline_stop,
     ):
         range_ = range
-        sample_limits = qtypes.NumberLimits(0, nsamples - 1, None)
 
         self.enabled = qtypes.Bool(value=enabled)
-        # self.label = qtypes.String(value=label)
         self.range = qtypes.Enum(allowed_values=Channel.ranges, initial_value=range_)
         self.invert = qtypes.Bool(value=invert)
-        self.signal_start_index = qtypes.Number(
-            decimals=0, limits=sample_limits, value=signal_start
-        )
-        self.signal_stop_index = qtypes.Number(decimals=0, limits=sample_limits, value=signal_stop)
-        self.processing_method = qtypes.Enum(
-            allowed_values=Channel.processing_methods, value=processing_method
-        )
-        self.use_baseline = qtypes.Bool(value=use_baseline)
-        self.baseline_start_index = qtypes.Number(
-            decimals=0,
-            limits=sample_limits,
-            value=baseline_start if baseline_start is not None else 0,
-        )
-        self.baseline_stop_index = qtypes.Number(
-            decimals=0,
-            limits=sample_limits,
-            value=baseline_stop if baseline_stop is not None else 0,
-        )
-        # signals
-        self.use_baseline.updated.connect(lambda: self.on_use_baseline())
-        self.on_use_baseline()
-
-    @property
-    def baseline_start(self):
-        return self.baseline_start_index.get()
-
-    @property
-    def baseline_stop(self):
-        return self.baseline_stop_index.get()
+        self.coupling = qtypes.Enum(allowed_values=Channel.couplings, initial_value=coupling)
 
     def get_range(self):
         """
@@ -84,29 +47,10 @@ class Channel:
 
     def get_widget(self):
         self.input_table = qtypes.widgets.InputTable()
-        # self.input_table.append(self.label, "Label")
         self.input_table.append(self.range, "Range +/-V")
-        self.input_table.append(self.signal_start_index, "Signal Start")
-        self.input_table.append(self.signal_stop_index, "Signal Stop")
         self.input_table.append(self.invert, "Invert")
-        self.input_table.append(self.processing_method, "Method")
-        self.input_table.append(self.use_baseline, "Use Baseline")
-        self.input_table.append(self.baseline_start_index, "Baseline Start")
-        self.input_table.append(self.baseline_stop_index, "Baseline Stop")
+        self.input_table.append(self.coupling, "Coupling")
         return self.input_table
-
-    def on_use_baseline(self):
-        self.processing_method.set_disabled(not self.use_baseline.get())
-        self.baseline_start_index.set_disabled(not self.use_baseline.get())
-        self.baseline_stop_index.set_disabled(not self.use_baseline.get())
-
-    @property
-    def signal_start(self):
-        return self.signal_start_index.get()
-
-    @property
-    def signal_stop(self):
-        return self.signal_stop_index.get()
 
 
 class ConfigWidget(QtWidgets.QWidget):
@@ -116,13 +60,12 @@ class ConfigWidget(QtWidgets.QWidget):
         self.client = yaqc.Client(self.port)
         self.client.measure(loop=True)
         config = toml.loads(self.client.get_config())
-        self.time = self.client.get_sample_time()
-        # print(self.time.shape, self.time.min(), self.time.max())
+        self.time = self.client.get_mappings()['time']
         self.nsamples = config["max_samples"]
         self.channels = {}
         self.types = {v["name"]: v for v in self.client._protocol["types"]}
         Channel.ranges = self.types["adc_range"]["symbols"]
-        Channel.processing_methods = self.types["processing_method"]["symbols"]
+        Channel.couplings = self.types["adc_coupling"]["symbols"]
         for name, d in config["channels"].items():
             self.channels[name] = Channel(**d, nsamples=self.nsamples)
         self.create_frame()
@@ -172,14 +115,6 @@ class ConfigWidget(QtWidgets.QWidget):
         self.samples_plot_min_voltage_line = self.samples_plot_widget.add_infinite_line(
             color="y", angle=0
         )
-        self.samples_plot_signal_stop_line = self.samples_plot_widget.add_infinite_line(color="r")
-        self.samples_plot_signal_start_line = self.samples_plot_widget.add_infinite_line(color="g")
-        self.samples_plot_baseline_stop_line = self.samples_plot_widget.add_infinite_line(
-            color="r", style="dashed"
-        )
-        self.samples_plot_baseline_start_line = self.samples_plot_widget.add_infinite_line(
-            color="g", style="dashed"
-        )
         display_layout.addWidget(self.samples_plot_widget)
         legend = self.samples_plot_widget.plot_object.addLegend()
         for k, s in self.samples_plot_scatters.items():
@@ -187,16 +122,6 @@ class ConfigWidget(QtWidgets.QWidget):
         style = pg.PlotDataItem(pen="y")
         legend.addItem(style, "voltage limits")
         style = pg.PlotDataItem(pen="g")
-        legend.addItem(style, "signal start")
-        style = pg.PlotDataItem(pen="r")
-        legend.addItem(style, "signal stop")
-        pen = pg.mkPen("g", style=QtCore.Qt.DashLine)
-        style = pg.PlotDataItem(pen=pen)
-        legend.addItem(style, "baseline start")
-        pen = pg.mkPen("r", style=QtCore.Qt.DashLine)
-        style = pg.PlotDataItem(pen=pen)
-        legend.addItem(style, "baseline stop")
-        style = pg.PlotDataItem(pen="b")
         # vertical line -------------------------------------------------------
         line = qtypes.widgets.Line("V")
         layout.addWidget(line)
@@ -218,6 +143,7 @@ class ConfigWidget(QtWidgets.QWidget):
         # channel_combobox
         allowed_values = list(self.channels.keys())
         self.samples_channel_combo = qtypes.Enum(allowed_values=allowed_values, name="Channels")
+        self.samples_channel_combo.updated.connect(self.update_samples_tab)
         input_table = qtypes.widgets.InputTable()
         input_table.append(self.samples_channel_combo)
         settings_layout.addWidget(input_table)
@@ -226,7 +152,6 @@ class ConfigWidget(QtWidgets.QWidget):
         for channel in self.channels.values():
             widget = channel.get_widget()
             settings_layout.addWidget(widget)
-            # widget.hide()
             self.channel_widgets.append(widget)
         # apply button
         self.apply_channel_button = qtypes.widgets.PushButton("APPLY CHANGES", background="green")
@@ -266,15 +191,13 @@ class ConfigWidget(QtWidgets.QWidget):
         # input table
         input_table = qtypes.widgets.InputTable()
         input_table.append(None, "Display")
-        self.shot_channel_combo = qtypes.Enum(name="Channel")
+        self.shot_channel_combo = qtypes.Enum(name="Channel", allowed_values=list(self.channels.keys()))
         input_table.append(self.shot_channel_combo)
         self.shot_channel_combo.updated.connect(self.on_shot_channel_updated)
         input_table.append(None, "Settings")
         self.nshots = qtypes.Number(name="Shots", value=self.client.get_nshots(), decimals=0)
         self.nshots.updated.connect(self.on_nshots_updated)
         input_table.append(self.nshots)
-        self.shots_processing_module_path = qtypes.Filepath(name="Shots Processing")
-        input_table.append(self.shots_processing_module_path)
         settings_layout.addWidget(input_table)
         # finish
         settings_layout.addStretch(1)
@@ -290,12 +213,6 @@ class ConfigWidget(QtWidgets.QWidget):
             config["channels"][k]["range"] = channel.range.get()
             config["channels"][k]["enabled"] = channel.enabled.get()
             config["channels"][k]["invert"] = channel.invert.get()
-            config["channels"][k]["signal_start"] = int(channel.signal_start_index.get())
-            config["channels"][k]["signal_stop"] = int(channel.signal_stop_index.get())
-            config["channels"][k]["processing_method"] = channel.processing_method.get()
-            config["channels"][k]["use_baseline"] = channel.use_baseline.get()
-            config["channels"][k]["baseline_start"] = int(channel.baseline_start_index.get())
-            config["channels"][k]["baseline_stop"] = int(channel.baseline_stop_index.get())
         """
         print(toml.dumps({
             self.client.id()["name"]: {"channels": config["channels"]}
@@ -349,10 +266,10 @@ class ConfigWidget(QtWidgets.QWidget):
             s.clear()
             s.setData(self.sample_xi, yi[i][0])
         # shots
-        yi = self.client.get_measured_shots()[int(self.shot_channel_combo.get_index())]
-        xi = np.arange(len(yi))
+        yi2 = yi[int(self.shot_channel_combo.get_index())].mean(axis=1)
+        xi = np.arange(len(yi2))
         self.shots_plot_scatter.clear()
-        self.shots_plot_scatter.setData(xi, yi)
+        self.shots_plot_scatter.setData(xi, yi2)
 
     def update_samples_tab(self):
         # buttons
@@ -365,10 +282,6 @@ class ConfigWidget(QtWidgets.QWidget):
         # lines on plot
         self.samples_plot_max_voltage_line.hide()
         self.samples_plot_min_voltage_line.hide()
-        self.samples_plot_signal_start_line.hide()
-        self.samples_plot_signal_stop_line.hide()
-        self.samples_plot_baseline_start_line.hide()
-        self.samples_plot_baseline_stop_line.hide()
         current_channel_object = list(self.channels.values())[channel_index]
         if current_channel_object.enabled.get():
             channel_min, channel_max = current_channel_object.get_range()
@@ -376,23 +289,6 @@ class ConfigWidget(QtWidgets.QWidget):
             self.samples_plot_max_voltage_line.setValue(channel_max * 1.05)
             self.samples_plot_min_voltage_line.show()
             self.samples_plot_min_voltage_line.setValue(channel_min * 1.05)
-            self.samples_plot_signal_start_line.show()
-            self.samples_plot_signal_start_line.setValue(
-                current_channel_object.signal_start_index.get()
-            )
-            self.samples_plot_signal_stop_line.show()
-            self.samples_plot_signal_stop_line.setValue(
-                current_channel_object.signal_stop_index.get()
-            )
-            if current_channel_object.use_baseline.get():
-                self.samples_plot_baseline_start_line.show()
-                self.samples_plot_baseline_start_line.setValue(
-                    current_channel_object.baseline_start_index.get()
-                )
-                self.samples_plot_baseline_stop_line.show()
-                self.samples_plot_baseline_stop_line.setValue(
-                    current_channel_object.baseline_stop_index.get()
-                )
         # finish
         ymin, ymax = current_channel_object.get_range()
         self.samples_plot_widget.set_ylim(ymin, ymax)

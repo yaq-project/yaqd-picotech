@@ -5,7 +5,7 @@
 
 protocol = "picotech-adc-triggered"
 doc = "Triggered Picotech Oscilloscope"
-traits = ["is-daemon", "is-sensor", "has-measure-trigger"]
+traits = ["is-daemon", "is-sensor", "has-measure-trigger", "has-mapping"]
 hardware = ["picotech:ps2000"]
 
 [links]
@@ -41,13 +41,7 @@ fields = [
     {"name"="enabled", "type"="boolean", "default"=false},
     {"name"="coupling", "type"="adc_coupling", "default"="DC"},
 	{"name"="range", "type"="adc_range", "default"="5 V"},
-	{"name"="signal_start", "type"="int", "default"=0},
-	{"name"="signal_stop", "type"="int", "default"=1},
 	{"name"="invert", "type"="boolean", "default"=false},
-	{"name"="processing_method", "type"="processing_method", "default"="average"},
-	{"name"="use_baseline", "type"="boolean", "default"=false},
-	{"name"="baseline_start", "type"="int", "default"=0},
-	{"name"="baseline_stop", "type"="int", "default"=0},
 ]
 
 [config]
@@ -125,17 +119,9 @@ default = 50
 
 [messages]
 
-[messages.get_sample_time]
-response = "ndarray"
-doc = "Get the time axis for the samples."
-
 [messages.get_measured_samples]
 response = "ndarray"
-doc = "Get an array of shape (channel, sample, shot)."
-
-[messages.get_measured_shots]
-response = "ndarray"
-doc = "Get an array of shape (channel, shot)"
+doc = "Get full raw channel data. Returns array of shape (channel, sample, shot)."
 
 [messages.get_nshots]
 doc = "Get the currently planned number of shots."
@@ -144,4 +130,3 @@ response = "int"
 [messages.set_nshots]
 doc = "Set the number of shots to acquire."
 request = [{"name"="nshots", "type"="int"}]
-
