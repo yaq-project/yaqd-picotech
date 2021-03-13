@@ -293,7 +293,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         from picosdk.functions import assert_pico2000_ok  # type: ignore
 
         # create buffers for data
-        buffers = [(ctypes.c_int16 * self._config["max_samples"])()] * 4
+        buffers = [(ctypes.c_int16 * self._config["max_samples"])() for _ in range(4)]
         overflow = ctypes.c_int16()  # bit pattern on whether overflow has occurred
 
         status = ps2000.ps2000_get_values(
