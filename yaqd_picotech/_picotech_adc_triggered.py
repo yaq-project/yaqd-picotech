@@ -60,8 +60,6 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
 
     def __init__(self, name, config, config_filepath):
         super().__init__(name, config, config_filepath)
-        # print(toml.dumps(self._config))
-        # print(self._config.items())
         self._raw_channels = []
         self._raw_enabled_channels = []
         for name, d in self._config["channels"].items():
