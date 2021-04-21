@@ -261,12 +261,10 @@ class ConfigWidget(QtWidgets.QWidget):
         # sample from first shot
         yi = self.client.get_measured_samples()  # samples:  (channel, shot, sample)
 
-        i = 0
-        for k, s in self.samples_plot_scatters.items():
+        for i, (k, s) in enumerate(self.samples_plot_scatters.items()):
             if self.channels[k].enabled.get():
                 s.clear()
                 s.setData(self.sample_xi, yi[i][0])
-                i += 1
         # shots
         yi2 = yi[int(self.shot_channel_combo.get_index())].mean(axis=1)
         xi = np.arange(len(yi2))
