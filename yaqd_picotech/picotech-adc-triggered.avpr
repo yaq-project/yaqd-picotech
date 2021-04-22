@@ -83,6 +83,10 @@
                 "string"
             ]
         },
+        "shots_processing_path": {
+            "doc": "Path to a .py module that processes raw scope traces into output channels. Example module is included in examples directory (`processing_module.py`). Path can be absolute or relative to the config file. ",
+            "type": "string"
+        },
         "timebase": {
             "default": 5,
             "doc": "Time step between measurements is `10 ns * 2^(time_base)`.",

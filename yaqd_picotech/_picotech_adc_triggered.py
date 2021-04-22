@@ -5,7 +5,7 @@ import ctypes
 import numpy as np  # type: ignore
 from dataclasses import dataclass
 from time import sleep
-import os
+import pathlib
 import imp
 # import toml
 
@@ -84,9 +84,13 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         assert self._config["model"].lower() == "ps2000"
 
         # processing module
-        path = self._config["shots_processing_path"]
-        name = os.path.basename(path).split(".")[0]
-        directory = os.path.dirname(path)
+        path = pathlib.Path(self._config["shots_processing_path"])
+        if not path.is_absolute():
+            path = (pathlib.Path(config_filepath).parent / path).resolve()
+
+        name = path.stem
+        directory = path.parent
+        self.logger.info(f"{directory}, {name}")
         f, p, d = imp.find_module(name, [directory])
         self.processing_module = imp.load_module(name, f, p, d)
 

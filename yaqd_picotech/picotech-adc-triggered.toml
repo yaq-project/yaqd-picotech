@@ -71,6 +71,14 @@ Int between 1 and 256. \
 Reduces output readings per trigger and increases time_interval in proportion.\
 """
 
+[config.shots_processing_path]
+type = "string"
+doc = """\
+Path to a .py module that processes raw scope traces into output channels. \
+Example module is included in examples directory (`processing_module.py`). \
+Path can be absolute or relative to the config file. \
+"""
+
 [config.channels]
 type = "map"
 values = "channel"
