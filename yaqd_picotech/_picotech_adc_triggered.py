@@ -90,7 +90,6 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
 
         name = path.stem
         directory = path.parent
-        self.logger.info(f"{directory}, {name}")
         f, p, d = imp.find_module(name, [directory])
         self.processing_module = imp.load_module(name, f, p, d)
 
