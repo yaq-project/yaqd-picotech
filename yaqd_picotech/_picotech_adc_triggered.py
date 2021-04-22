@@ -119,7 +119,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
                 enabled = True
             else:
                 enabled = False
-            print(c.name, c.enabled, enabled)
+            self.logger.debug(c.name, c.enabled, enabled)
             status = ps2000.ps2000_set_channel(
                 self.chandle,
                 c.index,  # channel
@@ -220,6 +220,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
 
     async def _measure(self):
         samples = await self._loop.run_in_executor(None, self._measure_samples)
+        self.logger.debug("samples acquired")
         # samples value shapes: (nshots, samples)
         # invert
         for k, inv in zip(samples.keys(), self._raw_inverts):
@@ -263,11 +264,11 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
             for c in self._raw_enabled_channels
         }
         self._create_task()
-        i = not_ready = 0
-        while i < self._state["nshots"]:
+
+        for i in range(self._state["nshots"]):
             for wait in np.geomspace(self.time_indisposed, 60, num=15):
                 status = ps2000.ps2000_ready(self.chandle)
-                if status != not_ready:
+                if status != 0:  # not_ready = 0
                     assert_pico2000_ok(status)
                     break
                 sleep(wait)
@@ -290,7 +291,6 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         from picosdk.ps2000 import ps2000  # type: ignore
         from picosdk.functions import assert_pico2000_ok  # type: ignore
 
-        # create buffers for data
         buffers = [(ctypes.c_int16 * self._config["max_samples"])() for _ in range(4)]
         overflow = ctypes.c_int16()  # bit pattern on whether overflow has occurred
 
@@ -301,7 +301,6 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
             ctypes.c_int32(self._config["max_samples"]),  # number of values
         )
         assert_pico2000_ok(status)
-        # todo: match physical channel to buffer; currently assumes order preserved
         sample = {
             c.name: c.adc_to_volts(buffers[c.index])
             for c in self._raw_enabled_channels
