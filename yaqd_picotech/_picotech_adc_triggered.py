@@ -80,8 +80,8 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         x += [c.index for c in self._raw_channels]
         assert len(set(x)) == len(x)
 
-        # only support ps2000 currently
-        assert self._config["model"].lower() == "ps2000"
+        # only support ps2xxx currently
+        assert self._config["model"].lower().startswith("ps2")
 
         # processing module
         path = pathlib.Path(self._config["shots_processing_path"])
