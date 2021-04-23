@@ -83,6 +83,10 @@
                 "string"
             ]
         },
+        "shots_processing_path": {
+            "doc": "Path to a .py module that processes raw scope traces into output channels. Example module is included in examples directory (`processing_module.py`). Path can be absolute or relative to the config file. ",
+            "type": "string"
+        },
         "timebase": {
             "default": 5,
             "doc": "Time step between measurements is `10 ns * 2^(time_base)`.",
@@ -222,14 +226,15 @@
             }
         },
         "get_measured": {
-            "doc": "Get most recent measured value.",
+            "doc": "Returns map of channel_name to measured_value. Always returns additional key measurement_id.",
             "origin": "is-sensor",
             "request": [],
             "response": {
                 "type": "map",
                 "values": [
                     "double",
-                    "ndarray"
+                    "ndarray",
+                    "int"
                 ]
             }
         },
@@ -237,6 +242,14 @@
             "doc": "Get full raw channel data. Returns array of shape (channel, sample, shot).",
             "request": [],
             "response": "ndarray"
+        },
+        "get_measurement_id": {
+            "doc": "Get current measurement_id. Clients are encouraged to watch for this to be updated before calling get_measured to get entire measurement.",
+            "origin": "is-sensor",
+            "request": [],
+            "response": {
+                "type": "int"
+            }
         },
         "get_nshots": {
             "doc": "Get the currently planned number of shots.",
@@ -311,10 +324,10 @@
         }
     },
     "traits": [
-        "is-sensor",
-        "is-daemon",
+        "has-mapping",
         "has-measure-trigger",
-        "has-mapping"
+        "is-daemon",
+        "is-sensor"
     ],
     "types": [
         {

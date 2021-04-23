@@ -5,7 +5,7 @@ import ctypes
 import numpy as np  # type: ignore
 from dataclasses import dataclass
 from time import sleep
-import os
+import pathlib
 import imp
 # import toml
 
@@ -42,7 +42,7 @@ maxADC = ctypes.c_uint16(2 ** 15)
 @dataclass
 class RawChannel:
     name: str
-    physical_channel: int
+    index: int
     range: str
     enabled: bool
     coupling: str
@@ -60,15 +60,16 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
 
     def __init__(self, name, config, config_filepath):
         super().__init__(name, config, config_filepath)
-        # print(toml.dumps(self._config))
-        # print(self._config.items())
         self._raw_channels = []
+        self._raw_enabled_channels = []
         for name, d in self._config["channels"].items():
-            channel = RawChannel(**d, physical_channel="ABCD".index(name), name=name)
+            channel = RawChannel(**d, index="ABCD".index(name), name=name)
             self._raw_channels.append(channel)
-        self._raw_channel_names = [c.name for c in self._raw_channels]
+            if channel.enabled:
+                self._raw_enabled_channels.append(channel)
+        self._raw_channel_names = [c.name for c in self._raw_enabled_channels]
         self._raw_channel_units = {k: "V" for k in self._channel_names}
-        self._raw_inverts = [[1, -1][c.invert] for c in self._raw_channels]
+        self._raw_inverts = [[1, -1][c.invert] for c in self._raw_enabled_channels]
         self._samples = {}
 
         # ddk: I believe these are the native units of all models
@@ -76,16 +77,19 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
 
         # check that all physical channels are unique
         x = []
-        x += [c.physical_channel for c in self._raw_channels]
+        x += [c.index for c in self._raw_channels]
         assert len(set(x)) == len(x)
 
-        # only support ps2000 currently
-        assert self._config["model"].lower() == "ps2000"
+        # only support ps2xxx currently
+        assert self._config["model"].lower().startswith("ps2")
 
         # processing module
-        path = self._config["shots_processing_path"]
-        name = os.path.basename(path).split(".")[0]
-        directory = os.path.dirname(path)
+        path = pathlib.Path(self._config["shots_processing_path"])
+        if not path.is_absolute():
+            path = (pathlib.Path(config_filepath).parent / path).resolve()
+
+        name = path.stem
+        directory = path.parent
         f, p, d = imp.find_module(name, [directory])
         self.processing_module = imp.load_module(name, f, p, d)
 
@@ -112,11 +116,17 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         from picosdk.ps2000 import ps2000  # type: ignore
         from picosdk.functions import assert_pico2000_ok  # type: ignore
 
+        # enable channel if it is trigger?
         for c in self._raw_channels:
+            if c.enabled or (self._config["trigger_self"] and self._config["trigger_channel"] == c.name):
+                enabled = True
+            else:
+                enabled = False
+            self.logger.debug(c.name, c.enabled, enabled)
             status = ps2000.ps2000_set_channel(
                 self.chandle,
-                c.physical_channel,  # channel
-                c.enabled,  # enabled
+                c.index,  # channel
+                enabled,
                 c.coupling == "DC",  # dc (True) / ac (False)
                 range_to_code[c.range],
             )
@@ -129,7 +139,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         trigger_channel = self._raw_channels["ABCD".index(self._config["trigger_channel"])]
         status = ps2000.ps2000_set_trigger(
             self.chandle,
-            trigger_channel.physical_channel,  # todo: convert to physical channel
+            trigger_channel.index,  # todo: convert to physical channel
             trigger_channel.volts_to_adc(self._config["trigger_threshold"] * 1e-6),  # threshold
             int(not self._config["trigger_rising"]),  # direction (0=rising, 1=falling)
             self._config["trigger_delay"],
@@ -213,6 +223,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
 
     async def _measure(self):
         samples = await self._loop.run_in_executor(None, self._measure_samples)
+        self.logger.debug("samples acquired")
         # samples value shapes: (nshots, samples)
         # invert
         for k, inv in zip(samples.keys(), self._raw_inverts):
@@ -252,16 +263,15 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         from picosdk.functions import assert_pico2000_ok  # type: ignore
 
         samples = {
-            name: np.zeros((self._state["nshots"], self._config["max_samples"]), dtype=float)
-            for name in self._raw_channel_names
+            c.name: np.zeros((self._state["nshots"], self._config["max_samples"]), dtype=float)
+            for c in self._raw_enabled_channels
         }
         self._create_task()
-        i = 0
-        not_ready = 0
-        while i < self._state["nshots"]:
+
+        for i in range(self._state["nshots"]):
             for wait in np.geomspace(self.time_indisposed, 60, num=15):
                 status = ps2000.ps2000_ready(self.chandle)
-                if status != not_ready:
+                if status != 0:  # not_ready = 0
                     assert_pico2000_ok(status)
                     break
                 sleep(wait)
@@ -284,20 +294,20 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         from picosdk.ps2000 import ps2000  # type: ignore
         from picosdk.functions import assert_pico2000_ok  # type: ignore
 
-        # create buffers for data
-        buffers = [(ctypes.c_int16 * self._config["max_samples"])()] * 4
+        buffers = [(ctypes.c_int16 * self._config["max_samples"])() for _ in range(4)]
         overflow = ctypes.c_int16()  # bit pattern on whether overflow has occurred
 
         status = ps2000.ps2000_get_values(
             self.chandle,  # handle
-            # pointers to channel buffers
             *[ctypes.byref(b) for b in buffers],
             ctypes.byref(overflow),  # pointer to overflow
             ctypes.c_int32(self._config["max_samples"]),  # number of values
         )
         assert_pico2000_ok(status)
-
-        sample = {c.name: c.adc_to_volts(b) for c, b in zip(self._raw_channels, buffers)}
+        sample = {
+            c.name: c.adc_to_volts(buffers[c.index])
+            for c in self._raw_enabled_channels
+        }
         # samples shape:  nsamples, shots
         return sample
 

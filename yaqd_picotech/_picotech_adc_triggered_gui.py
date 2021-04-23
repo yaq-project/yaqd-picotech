@@ -257,14 +257,14 @@ class ConfigWidget(QtWidgets.QWidget):
 
     def update(self):
         """
-        samples:  (channel, shot, sample)
-        shots: (channel, shot)
         """
         # sample from first shot
-        yi = self.client.get_measured_samples()
-        for i, s in enumerate(self.samples_plot_scatters.values()):
-            s.clear()
-            s.setData(self.sample_xi, yi[i][0])
+        yi = self.client.get_measured_samples()  # samples:  (channel, shot, sample)
+
+        for i, (k, s) in enumerate(self.samples_plot_scatters.items()):
+            if self.channels[k].enabled.get():
+                s.clear()
+                s.setData(self.sample_xi, yi[i][0])
         # shots
         yi2 = yi[int(self.shot_channel_combo.get_index())].mean(axis=1)
         xi = np.arange(len(yi2))

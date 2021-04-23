@@ -9,7 +9,8 @@ trigger_rising = true
 trigger_self = true
 trigger_threshold = 500000
 port = 39003
-shots_processing_path = "~/Documents/source/yaqd-picotech/examples/process_module.py"
+# shots_processing_path can be absolute or relative to the config file
+shots_processing_path = "C:/path/to/my/shots/processing_module.py"
 trigger_channel = "B"
 
 [scope.channels.A]
