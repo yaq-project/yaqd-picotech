@@ -219,7 +219,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
             ctypes.byref(time_indisposed_ms),
         )
         assert_pico2000_ok(status)
-        self.time_indisposed = time_indisposed_ms.value / 1e3
+        self.time_indisposed = max(time_indisposed_ms.value / 1e3, 1e-5)
 
     async def _measure(self):
         samples = await self._loop.run_in_executor(None, self._measure_samples)
