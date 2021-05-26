@@ -4,7 +4,7 @@ import asyncio
 import ctypes
 import numpy as np  # type: ignore
 from dataclasses import dataclass
-from time import sleep
+from time import sleep, time
 import pathlib
 import imp
 # import toml
@@ -122,7 +122,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
                 enabled = True
             else:
                 enabled = False
-            self.logger.debug(c.name, c.enabled, enabled)
+            self.logger.debug(f"{c.name}, {c.enabled}, {enabled}")
             status = ps2000.ps2000_set_channel(
                 self.chandle,
                 c.index,  # channel
@@ -222,8 +222,10 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         self.time_indisposed = max(time_indisposed_ms.value / 1e3, 1e-5)
 
     async def _measure(self):
+        start = time()
         samples = await self._loop.run_in_executor(None, self._measure_samples)
-        self.logger.debug("samples acquired")
+        finish = time()
+        self.logger.debug(f"samples acquired {(finish - start):0.4f}")
         # samples value shapes: (nshots, samples)
         # invert
         for k, inv in zip(samples.keys(), self._raw_inverts):
@@ -269,14 +271,13 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         self._create_task()
 
         for i in range(self._state["nshots"]):
-            for wait in np.geomspace(self.time_indisposed, 60, num=15):
+            while True:
                 status = ps2000.ps2000_ready(self.chandle)
                 if status != 0:  # not_ready = 0
                     assert_pico2000_ok(status)
                     break
-                sleep(wait)
-            else:
-                return self._measure_samples()  # non-ideal: restarts all nshots if one fails
+                if self.time_indisposed >= 0.1:
+                    sleep(self.time_indisposed)
             sample = self._measure_sample()
             for name in self._raw_channel_names:
                 samples[name][i] = sample[name]
@@ -284,7 +285,6 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
                 self.state_change = False
                 return self._measure_samples()
             self._create_task()
-            i += 1
         return samples
 
     def _measure_sample(self) -> Dict[str, List]:
