@@ -60,7 +60,7 @@ class ConfigWidget(QtWidgets.QWidget):
         self.client = yaqc.Client(self.port)
         self.client.measure(loop=True)
         config = toml.loads(self.client.get_config())
-        self.time = self.client.get_mappings()['time']
+        self.time = self.client.get_mappings()["time"]
         self.nsamples = config["max_samples"]
         self.channels = {}
         self.types = {v["name"]: v for v in self.client._protocol["types"]}
@@ -191,7 +191,9 @@ class ConfigWidget(QtWidgets.QWidget):
         # input table
         input_table = qtypes.widgets.InputTable()
         input_table.append(None, "Display")
-        self.shot_channel_combo = qtypes.Enum(name="Channel", allowed_values=list(self.channels.keys()))
+        self.shot_channel_combo = qtypes.Enum(
+            name="Channel", allowed_values=list(self.channels.keys())
+        )
         input_table.append(self.shot_channel_combo)
         self.shot_channel_combo.updated.connect(self.on_shot_channel_updated)
         input_table.append(None, "Settings")
@@ -256,8 +258,7 @@ class ConfigWidget(QtWidgets.QWidget):
         self.values_plot_widget.set_xlim(xmin, xmax)
 
     def update(self):
-        """
-        """
+        """ """
         # sample from first shot
         yi = self.client.get_measured_samples()  # samples:  (channel, shot, sample)
 

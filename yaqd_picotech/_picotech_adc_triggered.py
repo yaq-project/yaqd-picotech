@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from time import sleep, time
 import pathlib
 import imp
+
 # import toml
 
 from picosdk.functions import adc2mV, mV2adc  # type: ignore
@@ -118,7 +119,9 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
 
         # enable channel if it is trigger?
         for c in self._raw_channels:
-            if c.enabled or (self._config["trigger_self"] and self._config["trigger_channel"] == c.name):
+            if c.enabled or (
+                self._config["trigger_self"] and self._config["trigger_channel"] == c.name
+            ):
                 enabled = True
             else:
                 enabled = False
@@ -232,9 +235,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
             self._samples[k] = samples[k] * inv
         # process
         out = self.processing_module.process(
-            samples.values(),
-            self._raw_channel_names,
-            self._raw_channel_units
+            samples.values(), self._raw_channel_names, self._raw_channel_units
         )
         if len(out) == 4:
             out_sig, out_names, out_units, out_mappings = out
@@ -242,11 +243,11 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
             out_sig, out_names, out_units = out
             out_mappings = {name: [] for name in out_names}
         if self._measurement_id == 0:
-                self._channel_names = out_names
-                self._channel_units = out_units
-                self._channel_mappings = out_mappings
-                for k, v in zip(out_names, out_sig):
-                    self._channel_shapes[k] = [] if type(v) in [float, int] else v.shape
+            self._channel_names = out_names
+            self._channel_units = out_units
+            self._channel_mappings = out_mappings
+            for k, v in zip(out_names, out_sig):
+                self._channel_shapes[k] = [] if type(v) in [float, int] else v.shape
         # finish
         if self.state_change:
             self.state_change = False
@@ -304,10 +305,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
             ctypes.c_int32(self._config["max_samples"]),  # number of values
         )
         assert_pico2000_ok(status)
-        sample = {
-            c.name: c.adc_to_volts(buffers[c.index])
-            for c in self._raw_enabled_channels
-        }
+        sample = {c.name: c.adc_to_volts(buffers[c.index]) for c in self._raw_enabled_channels}
         # samples shape:  nsamples, shots
         return sample
 

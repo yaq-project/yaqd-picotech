@@ -26,7 +26,7 @@ symbols = ["average", "sum", "min", "max"]
 [[types]]
 type = "enum"
 name = "adc_range"
-symbols = ["20 mV", "50 mV", "100 mV", "200 mV", "500 mV", "1 V", "2 V", "5 V", "10 V", "20 V"]
+symbols = ["_20_mV", "_50_mV", "_100_mV", "_200_mV", "_500_mV", "_1_V", "_2_V", "_5_V", "_10_V", "_20_V"]
 
 [[types]]
 type = "enum"
