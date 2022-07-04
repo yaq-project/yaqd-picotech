@@ -25,7 +25,7 @@ try:
     status["setChB"] = ps.ps2000_set_channel(chandle, 1, 1, 1, chBRange)
     assert_pico2000_ok(status["setChB"])
     # find maximum ADC count value
-    maxADC = ctypes.c_uint16(2 ** 15)  # ddk: counts appears ready for 16 bit signed...
+    maxADC = ctypes.c_uint16(2**15)  # ddk: counts appears ready for 16 bit signed...
     adc_threshold = mV2adc(500, chARange, maxADC)
     # Set number of pre and post trigger samples to be collected
     maxSamples = 200  # maxSamples * oversample < maxSamplesReturn = memory / num_channels
