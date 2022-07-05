@@ -37,7 +37,7 @@ wave_type_to_code = {
 
 # maximum ADC count value
 # drivers normalize to 16 bit (15 bit signed) regardless of resolution
-maxADC = ctypes.c_uint16(2 ** 15)
+maxADC = ctypes.c_uint16(2**15)
 
 
 @dataclass
