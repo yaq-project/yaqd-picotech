@@ -346,7 +346,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         self._state["nshots"] = nshots
 
     def set_awg(self, frequency) -> None:
-        """ Turns on awg if not being used in config[trigger_self]"""
+        """Turns on awg if not being used in config[trigger_self]"""
         if self._config["trigger_self"]:
             return ValueError("Self triggering active, cannot be used for external awgs.")
         else:
