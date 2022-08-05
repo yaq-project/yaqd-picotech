@@ -286,6 +286,16 @@
             ],
             "response": "int"
         },
+        "set_awg": {
+            "doc": "Set square wave frequency of the AWG if not being used in trigger_self.",
+            "request": [
+                {
+                    "name": "frequency",
+                    "type": "int"
+                }
+            ],
+            "response": "null"
+        },
         "set_nshots": {
             "doc": "Set the number of shots to acquire.",
             "request": [

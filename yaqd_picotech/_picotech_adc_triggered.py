@@ -150,7 +150,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         )
         assert_pico2000_ok(status)
 
-    def _set_awg(self, freq):
+    def _set_awg(self, freq=1000):
         """
         generate 1 V p-p square wave
 
@@ -344,3 +344,10 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         assert nshots > 0
         self.state_change = True
         self._state["nshots"] = nshots
+
+    def set_awg(self, frequency) -> None:
+        """ Turns on awg if not being used in config[trigger_self]"""
+        if self._config["trigger_self"]:
+            return ValueError("Self triggering active, cannot be used for external awgs.")
+        else:
+            self._set_awg(freq=frequency)
