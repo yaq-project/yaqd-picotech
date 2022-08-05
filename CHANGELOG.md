@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### changed
+- added frequency (freq) parameter to _set_awg, to adjust the frequency of the 
+ square wave.  Does not coerce the parameter to limits set by the specifications
+ of the Picotech signal generator.
+
+
 ## [2022.4.0]
 
 ### changed

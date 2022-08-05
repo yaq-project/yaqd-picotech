@@ -150,9 +150,15 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         )
         assert_pico2000_ok(status)
 
-    def _set_awg(self):
+    def _set_awg(self, freq):
         """
-        generate 1 V p-p square wave at 1 kHz
+        generate 1 V p-p square wave
+
+        Parameters
+        ---------
+        freq : int
+        frequency of square wave in Hz
+
         """
         from picosdk.ps2000 import ps2000  # type: ignore
         from picosdk.functions import assert_pico2000_ok  # type: ignore
@@ -163,8 +169,8 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
             500000,  # offset voltage (uV)
             ctypes.c_uint32(1000000),  # peak-to-peak voltage (uV)
             wave_type_to_code["square"],  # wavetype code
-            1000,  # start frequency (Hz)
-            1000,  # stop frequency (Hz)
+            int(freq),  # start frequency (Hz)
+            int(freq),  # stop frequency (Hz)
             0,  # increment frequency per `dwell_time`
             0,  # dwell_time
             ctypes.c_int32(0),  # sweep type
