@@ -140,5 +140,5 @@ doc = "Set the number of shots to acquire."
 request = [{"name"="nshots", "type"="int"}]
 
 [messages.set_awg]
-doc = "Set square wave frequency of the AWG if not being used in trigger_self."
+doc = "Set square wave frequency of the AWG.  Only available if trigger_self=False."
 request = [{"name"="frequency", "type"="int"}]
