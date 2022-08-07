@@ -6,10 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### changed
-- added frequency (freq) parameter to _set_awg, to adjust the frequency of the
- square wave.  Does not coerce the parameter to limits set by the specifications
- of the Picotech signal generator.  Available as exposed method and will execute
- properly if trigger self is not active.
+- Added message `set_awg`, which allows clients to turn on square wave pulse generator at custom rep rates. Available only if `trigger_self=False`.
 
 
 ## [2022.4.0]
