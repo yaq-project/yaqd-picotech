@@ -20,6 +20,7 @@ repos:
     hooks:
       - id: mypy
         exclude: ^docs/conf.py$|^examples/.*$
+        additional_dependencies: [types-toml]
 
   - repo: https://gitlab.com/yaq/yaq-traits
     rev: v2022.3.0
