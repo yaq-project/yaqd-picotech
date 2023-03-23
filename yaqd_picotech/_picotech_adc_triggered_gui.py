@@ -16,7 +16,6 @@ import time
 
 
 class Channel:
-
     ranges = None
     couplings = None
 
