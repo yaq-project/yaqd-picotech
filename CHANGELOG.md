@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### changed
+- Added message `set_awg`, which allows clients to turn on square wave pulse generator at custom rep rates. Available only if `trigger_self=False`.
+
+
 ## [2022.4.0]
 
 ### changed
