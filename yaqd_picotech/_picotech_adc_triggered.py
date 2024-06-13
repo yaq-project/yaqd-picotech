@@ -19,16 +19,16 @@ from yaqd_core import IsSensor, IsDaemon, HasMeasureTrigger, HasMapping
 # ranges = [0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20]
 # code_to_range = {i+1: ranges[i] for i in range(len(ranges))}
 range_to_code = {
-    "20 mV": 1,
-    "50 mV": 2,
-    "100 mV": 3,
-    "200 mV": 4,
-    "500 mV": 5,
-    "1 V": 6,
-    "2 V": 7,
-    "5 V": 8,
-    "10 V": 9,
-    "20 V": 10,
+    "_20_mV": 1,
+    "_50_mV": 2,
+    "_100_mV": 3,
+    "_200_mV": 4,
+    "_500_mV": 5,
+    "_1_V": 6,
+    "_2_V": 7,
+    "_5_V": 8,
+    "_10_V": 9,
+    "_20_V": 10,
 }
 
 wave_type_to_code = {
@@ -150,9 +150,15 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         )
         assert_pico2000_ok(status)
 
-    def _set_awg(self):
+    def _set_awg(self, freq=1000):
         """
-        generate 1 V p-p square wave at 1 kHz
+        generate 1 V p-p square wave
+
+        Parameters
+        ---------
+        freq : int
+        frequency of square wave in Hz
+
         """
         from picosdk.ps2000 import ps2000  # type: ignore
         from picosdk.functions import assert_pico2000_ok  # type: ignore
@@ -163,8 +169,8 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
             500000,  # offset voltage (uV)
             ctypes.c_uint32(1000000),  # peak-to-peak voltage (uV)
             wave_type_to_code["square"],  # wavetype code
-            1000,  # start frequency (Hz)
-            1000,  # stop frequency (Hz)
+            int(freq),  # start frequency (Hz)
+            int(freq),  # stop frequency (Hz)
             0,  # increment frequency per `dwell_time`
             0,  # dwell_time
             ctypes.c_int32(0),  # sweep type
@@ -338,3 +344,10 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         assert nshots > 0
         self.state_change = True
         self._state["nshots"] = nshots
+
+    def set_awg(self, frequency) -> None:
+        """Turns on awg if not being used in config[trigger_self]"""
+        if self._config["trigger_self"]:
+            return ValueError("Self triggering active, cannot be used for external awgs.")
+        else:
+            self._set_awg(freq=frequency)
