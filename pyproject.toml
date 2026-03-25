@@ -2,18 +2,14 @@
 requires = ["flit_core >=2,<4"]
 build-backend = "flit_core.buildapi"
 
-[tool.flit.metadata]
-module = "yaqd_picotech"
-dist-name = "yaqd-picotech"
-author = "Dan Kohler"
-author-email = "ddkohler@wisc.edu"
-home-page = "https://yaq.fyi"
-description-file = "README.md"
+[project]
+name = "yaqd-picotech"
+authors = [{name="Dan Kohler", email="ddkohler@wisc.edu"}]
 requires-python = ">=3.7"
-requires = [
-  "yaqd-core>=2020.12.0",
-  "picosdk>=1.0"
-]
+dependencies = ["yaqd-core>=2020.12.0", "picosdk"]
+license = "ISC"
+readme = {file = "README.txt", content-type = "text/markdown"}
+dynamic = ["version"]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
     "Intended Audience :: Science/Research",
@@ -25,15 +21,20 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 
-[tool.flit.metadata.urls]
-Source = "https://gitlab.com/yaq/yaqd-picotech"
-Issues = "https://gitlab.com/yaq/yaqd-picotech/issues"
-
-[tool.flit.metadata.requires-extra]
+[project.optional-dependencies]
+gui = ["PyQt5"]
 dev = ["black", "pre-commit"]
 
-[tool.flit.scripts]
+[project.scripts]
 yaqd-picotech-adc-triggered = "yaqd_picotech._picotech_adc_triggered:PicotechAdcTriggered.main"
+
+[project.entry-points."spam.magical"]
+yaqd-picotech-adc-triggered = "yaqd_picotech._picotech_adc_triggered:PicotechAdcTriggered.main"
+
+[project.urls]
+Source = "https://gitlab.com/yaq/yaqd-picotech"
+Issues = "https://gitlab.com/yaq/yaqd-picotech/issues"
+Homepage = "https://yaq.fyi"
 
 [tool.black]
 line-length = 99
