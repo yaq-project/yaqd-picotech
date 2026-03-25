@@ -138,3 +138,11 @@ response = "int"
 [messages.set_nshots]
 doc = "Set the number of shots to acquire."
 request = [{"name"="nshots", "type"="int"}]
+
+
+[properties.nshots]
+type = "int"
+getter = "get_nshots"
+setter = "set_nshots"
+control_kind = "hinted"
+record_kind = "data"

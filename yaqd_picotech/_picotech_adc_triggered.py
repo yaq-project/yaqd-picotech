@@ -6,9 +6,8 @@ import numpy as np  # type: ignore
 from dataclasses import dataclass
 from time import sleep, time
 import pathlib
-import imp
-
-# import toml
+import importlib.util
+import sys
 
 from picosdk.functions import adc2mV, mV2adc  # type: ignore
 from typing import Dict, Any, List
@@ -38,6 +37,14 @@ wave_type_to_code = {
 # maximum ADC count value
 # drivers normalize to 16 bit (15 bit signed) regardless of resolution
 maxADC = ctypes.c_uint16(2**15)
+
+
+def import_from_path(module_name, file_path):
+    spec = importlib.util.spec_from_file_location(module_name, file_path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 @dataclass
@@ -88,11 +95,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         path = pathlib.Path(self._config["shots_processing_path"])
         if not path.is_absolute():
             path = (pathlib.Path(config_filepath).parent / path).resolve()
-
-        name = path.stem
-        directory = path.parent
-        f, p, d = imp.find_module(name, [directory])
-        self.processing_module = imp.load_module(name, f, p, d)
+        self.processing_module = import_from_path("processing_module", path)
 
         # finish
         self._open_unit()
