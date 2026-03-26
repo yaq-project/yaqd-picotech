@@ -237,7 +237,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         for k, inv in zip(samples.keys(), self._raw_inverts):
             self._samples[k] = samples[k] * inv
         # filter samples
-        if self._state["enable_threshold"]:
+        if self._state["threshold_enabled"]:
             self._samples["A"] = np.ma.masked_less(self._samples["A"], self._state["threshold"])
         # process
         out = self.processing_module.process(
@@ -344,6 +344,15 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         assert nshots > 0
         self.state_change = True
         self._state["nshots"] = nshots
+
+    def enable_threshold(self, flag:bool):
+        self._state["threshold_enabled"] = flag
+
+    def get_threshold(self) -> float:
+        return self._state["threshold"]
+    
+    def set_threshold(self, val:float):
+        self._state["threshold"] = val
 
 
 if __name__ == "__main__":
