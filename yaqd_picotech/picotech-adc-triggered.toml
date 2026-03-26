@@ -125,6 +125,9 @@ event is in the middle of block.\
 type = "int"
 default = 50
 
+[state.threshold]
+type = ["null", "float"]
+
 [messages]
 
 [messages.get_measured_samples]
@@ -139,6 +142,11 @@ response = "int"
 doc = "Set the number of shots to acquire."
 request = [{"name"="nshots", "type"="int"}]
 
+[messages.get_threshold]
+response = ["null", "float"]
+
+[messages.set_threshold]
+request = [{"name"="nshots", "type"=["null", "float"]}]
 
 [properties.nshots]
 type = "int"
@@ -146,3 +154,10 @@ getter = "get_nshots"
 setter = "set_nshots"
 control_kind = "hinted"
 record_kind = "data"
+
+[properties.threshold]
+type = ["float", "null"]
+getter = "get_nshots"
+setter = "set_nshots"
+control_kind = "normal"
+record_kind = "metadata"
