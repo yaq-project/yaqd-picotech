@@ -126,7 +126,12 @@ type = "int"
 default = 50
 
 [state.threshold]
-type = ["null", "float"]
+type = "float"
+default = 0
+
+[state.threshold_enabled]
+type = "boolean"
+default = 0
 
 [messages]
 
@@ -143,10 +148,17 @@ doc = "Set the number of shots to acquire."
 request = [{"name"="nshots", "type"="int"}]
 
 [messages.get_threshold]
-response = ["null", "float"]
+doc = "Get the lower threshold limit below which scope trace values will be masked."
+response = "float"
 
 [messages.set_threshold]
-request = [{"name"="nshots", "type"=["null", "float"]}]
+doc = "Set the lower threshold limit below which scope trace values will be masked."
+request = [{"name"="threshold", "type"="float"}]
+
+[messages.enable_threshold]
+doc = "When enabled, the threshold will mask values in scope traces that are less than the threshold."
+request = [{"name"="enable", "type"="boolean"}]
+
 
 [properties.nshots]
 type = "int"
@@ -156,7 +168,7 @@ control_kind = "hinted"
 record_kind = "data"
 
 [properties.threshold]
-type = ["float", "null"]
+type = "float"
 getter = "get_nshots"
 setter = "set_nshots"
 control_kind = "normal"

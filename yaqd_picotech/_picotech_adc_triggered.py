@@ -79,7 +79,6 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         self._raw_channel_units = {k: "V" for k in self._channel_names}
         self._raw_inverts = [[1, -1][c.invert] for c in self._raw_enabled_channels]
         self._samples = {}
-        self._state["threshold"] = None
 
         # ddk: I believe these are the native units of all models
         self._mapping_units["time"] = "ns"
@@ -238,8 +237,8 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         for k, inv in zip(samples.keys(), self._raw_inverts):
             self._samples[k] = samples[k] * inv
         # filter samples
-        if (thres:=self._state["threshold"]) is not None:
-            self._samples["A"] = np.ma.masked_less(self._samples["A"], thres)
+        if self._state["enable_threshold"]:
+            self._samples["A"] = np.ma.masked_less(self._samples["A"], self._state["threshold"])
         # process
         out = self.processing_module.process(
             samples.values(), self._raw_channel_names, self._raw_channel_units

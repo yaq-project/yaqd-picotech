@@ -137,6 +137,16 @@
             "request": [],
             "response": "boolean"
         },
+        "enable_threshold": {
+            "doc": "When enabled, the threshold will mask values in scope traces that are less than the threshold.",
+            "request": [
+                {
+                    "name": "enable",
+                    "type": "boolean"
+                }
+            ],
+            "response": "null"
+        },
         "get_channel_mappings": {
             "doc": "Defines which mapping keys apply to which channel keys. Each channel may have zero or many mappings. Mappings must broadcast into corresponding channels.",
             "origin": "has-mapping",
@@ -262,6 +272,11 @@
             "request": [],
             "response": "string"
         },
+        "get_threshold": {
+            "doc": "Get the lower threshold limit below which scope trace values will be masked.",
+            "request": [],
+            "response": "float"
+        },
         "id": {
             "doc": "JSON object with information to identify the daemon, including name, kind, make, model, serial.\n",
             "origin": "is-daemon",
@@ -296,6 +311,16 @@
             ],
             "response": "null"
         },
+        "set_threshold": {
+            "doc": "Set the lower threshold limit below which scope trace values will be masked.",
+            "request": [
+                {
+                    "name": "threshold",
+                    "type": "float"
+                }
+            ],
+            "response": "null"
+        },
         "shutdown": {
             "doc": "Cleanly shutdown (or restart) daemon.",
             "origin": "is-daemon",
@@ -326,6 +351,17 @@
             "setter": "set_nshots",
             "type": "int",
             "units_getter": null
+        },
+        "threshold": {
+            "control_kind": "normal",
+            "dynamic": true,
+            "getter": "get_nshots",
+            "limits_getter": null,
+            "options_getter": null,
+            "record_kind": "metadata",
+            "setter": "set_nshots",
+            "type": "float",
+            "units_getter": null
         }
     },
     "protocol": "picotech-adc-triggered",
@@ -334,6 +370,14 @@
         "nshots": {
             "default": 50,
             "type": "int"
+        },
+        "threshold": {
+            "default": 0,
+            "type": "float"
+        },
+        "threshold_enabled": {
+            "default": 0,
+            "type": "boolean"
         }
     },
     "traits": [
