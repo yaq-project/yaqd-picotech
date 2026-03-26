@@ -238,7 +238,9 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
             self._samples[k] = samples[k] * inv
         # filter samples
         if self._state["threshold_enabled"]:
-            self._samples["A"] = np.ma.masked_less(self._samples["A"], self._state["threshold"])
+            ignore = self._samples["A"] < self._state["threshold"]
+            self.logger.info(f"{ignore.sum()=}")
+            self._samples["A"][ignore] = 0
         # process
         out = self.processing_module.process(
             samples.values(), self._raw_channel_names, self._raw_channel_units
