@@ -52,3 +52,5 @@ coverage.xml
 # vim
 *.sw?
 development-notes.md
+*.csv
+examples/data.npz

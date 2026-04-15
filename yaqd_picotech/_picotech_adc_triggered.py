@@ -243,7 +243,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
             self._samples["A"][ignore] = 0
         # process
         out = self.processing_module.process(
-            samples.values(), self._raw_channel_names, self._raw_channel_units
+            samples, self._raw_channel_names, self._raw_channel_units
         )
         if len(out) == 4:
             out_sig, out_names, out_units, out_mappings = out
@@ -263,6 +263,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         return {k: v for k, v in zip(out_names, out_sig)}
 
     def _measure_samples(self):
+        # TODO: make asynchronous
         """
         loop through shots
 
@@ -279,6 +280,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         }
         self._create_task()
 
+        # TODO: loop here is blocking; I should be feeding a queue
         for i in range(self._state["nshots"]):
             while True:
                 status = ps2000.ps2000_ready(self.chandle)
