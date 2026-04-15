@@ -242,9 +242,14 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
             self.logger.info(f"{ignore.sum()=}")
             self._samples["A"][ignore] = 0
         # process
-        out = self.processing_module.process(
-            samples, self._raw_channel_names, self._raw_channel_units
-        )
+        self.logger.info(f"{self.raw_channel_names=}")
+        try:
+            out = self.processing_module.process(
+                self._samples, self._raw_channel_names, self._raw_channel_units
+            )
+        except Exception as e:
+            self.logger.error(e, stack_info=True)
+            raise e
         if len(out) == 4:
             out_sig, out_names, out_units, out_mappings = out
         else:

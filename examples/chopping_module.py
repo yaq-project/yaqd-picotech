@@ -22,12 +22,12 @@ def process(arrs: dict, names, units):
     # for now, assume chB is chopper, chA is signal
     on = arrs["B"] > 1.2  # a is on, b is off
     # b = ~a
-    A_diff = arrs[0][on].mean() - arrs[0][~on].mean()
-
-    out = [arr.mean() for arr in arrs]
-    out += A_diff
+    A_diff = arrs["A"][on].mean() - arrs["A"][~on].mean()
+    
+    out = [arr.mean() for arr in arrs.values()]
+    out.append(A_diff)
     out_names = [name + "_mean" for name in names]
-    out_names += names[0] + "_diff"
+    out_names.append(names[0] + "_diff")
     out_units = {name: "V" for name in out_names}
     return [out, out_names, out_units]
 

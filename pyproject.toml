@@ -4,6 +4,7 @@ build-backend = "flit_core.buildapi"
 
 [project]
 name = "yaqd-picotech"
+description = "yaq daemons for Pico Technology oscilloscopes"
 authors = [{name="Dan Kohler", email="ddkohler@wisc.edu"}]
 requires-python = ">=3.7"
 dependencies = ["yaqd-core>=2020.12.0", "picosdk", "numpy"]
