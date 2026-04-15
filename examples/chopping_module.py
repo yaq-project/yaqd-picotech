@@ -23,7 +23,7 @@ def process(arrs: dict, names, units):
     on = arrs["B"] > 1.2  # a is on, b is off
     # b = ~a
     A_diff = arrs["A"][on].mean() - arrs["A"][~on].mean()
-    
+
     out = [arr.mean() for arr in arrs.values()]
     out.append(A_diff)
     out_names = [name + "_mean" for name in names]
