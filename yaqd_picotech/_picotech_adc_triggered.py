@@ -229,7 +229,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
 
     async def _measure(self):
         start = time()
-        samples = await self._loop.run_in_executor(None, self._measure_samples)
+        samples = await self._measure_samples()
         finish = time()
         self.logger.debug(f"samples acquired {(finish - start):0.4f}")
         # samples value shapes: (nshots, samples)
@@ -267,8 +267,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
             return self._measure()
         return {k: v for k, v in zip(out_names, out_sig)}
 
-    def _measure_samples(self):
-        # TODO: make asynchronous
+    async def _measure_samples(self):
         """
         loop through shots
 
@@ -285,15 +284,14 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         }
         self._create_task()
 
-        # TODO: loop here is blocking; I should be feeding a queue
+        # TODO: produce/consume workflow
         for i in range(self._state["nshots"]):
             while True:
                 status = ps2000.ps2000_ready(self.chandle)
                 if status != 0:  # not_ready = 0
                     assert_pico2000_ok(status)
                     break
-                if self.time_indisposed >= 0.1:
-                    sleep(self.time_indisposed)
+                await asyncio.sleep(self.time_indisposed)
             sample = self._measure_sample()
             for name in self._raw_channel_names:
                 samples[name][i] = sample[name]
@@ -301,6 +299,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
                 self.state_change = False
                 return self._measure_samples()
             self._create_task()
+            await asyncio.sleep(0.0)
         return samples
 
     def _measure_sample(self) -> Dict[str, List]:
