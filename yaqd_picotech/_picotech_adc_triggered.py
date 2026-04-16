@@ -168,9 +168,6 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         assert_pico2000_ok(status)
 
     def _set_block_time(self):
-        from picosdk.ps2000 import ps2000  # type: ignore
-        from picosdk.functions import assert_pico2000_ok  # type: ignore
-
         maxSamplesReturn = ctypes.c_int32()
         oversample = ctypes.c_int16(self._config["oversample"])
         time_interval = ctypes.c_int32()
