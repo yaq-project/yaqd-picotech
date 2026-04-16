@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def process(arrs:dict, names:list, units:list):
+def process(arrs: dict, names: list, units: list):
     """
     For each channel overall mean
 
