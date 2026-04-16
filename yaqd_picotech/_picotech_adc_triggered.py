@@ -10,6 +10,9 @@ import importlib.util
 import sys
 
 from picosdk.functions import adc2mV, mV2adc  # type: ignore
+from picosdk.ps2000 import ps2000  # type: ignore
+from picosdk.functions import assert_pico2000_ok, PicoSDKCtypesError  # type: ignore
+
 from typing import Dict, Any, List
 from yaqd_core import IsSensor, IsDaemon, HasMeasureTrigger, HasMapping
 
@@ -103,9 +106,6 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         self.measure(loop=self._config["loop_at_startup"])
 
     def _open_unit(self):
-        from picosdk.ps2000 import ps2000  # type: ignore
-        from picosdk.functions import assert_pico2000_ok  # type: ignore
-
         status = ps2000.ps2000_open_unit()
         assert_pico2000_ok(status)
         self.chandle = ctypes.c_int16(status)
@@ -117,8 +117,6 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         self._set_trigger()
 
     def _set_channels(self):
-        from picosdk.ps2000 import ps2000  # type: ignore
-        from picosdk.functions import assert_pico2000_ok  # type: ignore
 
         # enable channel if it is trigger?
         for c in self._raw_channels:
@@ -139,9 +137,6 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
             assert_pico2000_ok(status)
 
     def _set_trigger(self):
-        from picosdk.ps2000 import ps2000  # type: ignore
-        from picosdk.functions import assert_pico2000_ok  # type: ignore
-
         trigger_channel = self._raw_channels["ABCD".index(self._config["trigger_channel"])]
         status = ps2000.ps2000_set_trigger(
             self.chandle,
@@ -157,9 +152,6 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         """
         generate 1 V p-p square wave at 1 kHz
         """
-        from picosdk.ps2000 import ps2000  # type: ignore
-        from picosdk.functions import assert_pico2000_ok  # type: ignore
-
         # awg
         status = ps2000.ps2000_set_sig_gen_built_in(
             self.chandle,
@@ -211,12 +203,8 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         assert_pico2000_ok(status)
 
     def _create_task(self):
-        from picosdk.ps2000 import ps2000  # type: ignore
-        from picosdk.functions import assert_pico2000_ok  # type: ignore
-
+        """estimate total acquisition time, then run acquisition"""
         time_indisposed_ms = ctypes.c_int32()
-        # pointer to approximate time DAQ takes to collect data
-        # i.e. (sample interval) x (number of points required)
         status = ps2000.ps2000_run_block(
             self.chandle,
             self._config["max_samples"],
@@ -225,7 +213,8 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
             ctypes.byref(time_indisposed_ms),
         )
         assert_pico2000_ok(status)
-        self.time_indisposed = max(time_indisposed_ms.value / 1e3, 1e-5)
+        # daq collection time is approximately (sample interval) x (number of points required)
+        self.time_indisposed = max(time_indisposed_ms.value / 1e3, 1e-5)  # seconds
 
     async def _measure(self):
         start = time()
@@ -275,7 +264,6 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         -------
             dict key:channel, value: ndarray[shot][sample]
         """
-
         samples = {
             c.name: np.zeros((self._state["nshots"], self._config["max_samples"]), dtype=float)
             for c in self._raw_enabled_channels
@@ -300,9 +288,6 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         """
         retrieve sample (i.e. a single scope trace)
         """
-        from picosdk.ps2000 import ps2000  # type: ignore
-        from picosdk.functions import assert_pico2000_ok  # type: ignore
-
         buffers = [(ctypes.c_int16 * self._config["max_samples"])() for _ in range(4)]
         overflow = ctypes.c_int16()  # bit pattern on whether overflow has occurred
 
@@ -319,8 +304,6 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
 
     def close(self) -> None:
         self.stop_looping()
-        from picosdk.ps2000 import ps2000  # type: ignore
-        from picosdk.functions import assert_pico2000_ok, PicoSDKCtypesError  # type: ignore
 
         while True:
             try:
