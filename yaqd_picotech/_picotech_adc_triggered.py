@@ -117,7 +117,6 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         self._set_trigger()
 
     def _set_channels(self):
-
         # enable channel if it is trigger?
         for c in self._raw_channels:
             if c.enabled or (
