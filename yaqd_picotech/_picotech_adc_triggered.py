@@ -281,19 +281,18 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
             for c in self._raw_enabled_channels
         }
 
+        # TODO: consider using a produce/consume workflow
         for i in range(self._state["nshots"]):
-                if status != 0:  # not_ready = 0
-                    assert_pico2000_ok(status)
-                    break
+            self._create_task()
+            while not (status := ps2000.ps2000_ready(self.chandle)):  # not_ready = 0
                 await asyncio.sleep(self.time_indisposed)
-            sample = self._measure_sample()
             assert_pico2000_ok(status)
+            sample = self._retrieve_sample()
             for name in self._raw_channel_names:
                 samples[name][i] = sample[name]
             if self.state_change:
                 self.state_change = False
                 return self._measure_samples()
-            self._create_task()
             await asyncio.sleep(0.0)
         return samples
 
