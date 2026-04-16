@@ -242,7 +242,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
             self.logger.info(f"{ignore.sum()=}")
             self._samples["A"][ignore] = 0
         # process
-        self.logger.info(f"{self.raw_channel_names=}")
+        self.logger.info(f"{self._raw_channel_names=}")
         try:
             out = self.processing_module.process(
                 self._samples, self._raw_channel_names, self._raw_channel_units
@@ -269,30 +269,25 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
 
     async def _measure_samples(self):
         """
-        loop through shots
+        loop through samples (i.e. scope traces) and return the complete samples list
 
         returns
         -------
             dict key:channel, value: ndarray[shot][sample]
         """
-        from picosdk.ps2000 import ps2000  # type: ignore
-        from picosdk.functions import assert_pico2000_ok  # type: ignore
 
         samples = {
             c.name: np.zeros((self._state["nshots"], self._config["max_samples"]), dtype=float)
             for c in self._raw_enabled_channels
         }
-        self._create_task()
 
-        # TODO: produce/consume workflow
         for i in range(self._state["nshots"]):
-            while True:
-                status = ps2000.ps2000_ready(self.chandle)
                 if status != 0:  # not_ready = 0
                     assert_pico2000_ok(status)
                     break
                 await asyncio.sleep(self.time_indisposed)
             sample = self._measure_sample()
+            assert_pico2000_ok(status)
             for name in self._raw_channel_names:
                 samples[name][i] = sample[name]
             if self.state_change:
@@ -302,9 +297,9 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
             await asyncio.sleep(0.0)
         return samples
 
-    def _measure_sample(self) -> Dict[str, List]:
+    def _retrieve_sample(self) -> Dict[str, List]:
         """
-        retrieve samples from single shot
+        retrieve sample (i.e. a single scope trace)
         """
         from picosdk.ps2000 import ps2000  # type: ignore
         from picosdk.functions import assert_pico2000_ok  # type: ignore
