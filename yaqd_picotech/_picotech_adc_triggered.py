@@ -246,10 +246,6 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
             self._channel_mappings = out_mappings
             for k, v in zip(out_names, out_sig):
                 self._channel_shapes[k] = [] if type(v) in [float, int] else v.shape
-        # finish
-        if self.state_change:
-            self.state_change = False
-            return self._measure()
         return {k: v for k, v in zip(out_names, out_sig)}
 
     async def _measure_samples(self):
@@ -274,10 +270,11 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
             sample = self._retrieve_sample()
             for name in self._raw_channel_names:
                 samples[name][i] = sample[name]
+            await asyncio.sleep(0.0)
+            # rerun measure if parameters have changed
             if self.state_change:
                 self.state_change = False
                 return self._measure_samples()
-            await asyncio.sleep(0.0)
         return samples
 
     def _retrieve_sample(self) -> Dict[str, List]:
