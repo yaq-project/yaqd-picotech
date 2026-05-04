@@ -53,11 +53,26 @@ def import_from_path(module_name, file_path):
 def adc2mV(bufferADC, range, maxADC=__maxADC__):
     # don't use builtins; mv2adc vectorization speeds up my retrieval of (3000 samples x 1000 replicates) by 5x
     # https://github.com/picotech/picosdk-python-wrappers/pull/56 --- thanks fedetony
-    channelInputRanges = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000]
-    normRange = channelInputRanges[range]/maxADC.value
-    bufferV =  np.ctypeslib.as_array(bufferADC) * normRange
+    channelInputRanges = [
+        10,
+        20,
+        50,
+        100,
+        200,
+        500,
+        1000,
+        2000,
+        5000,
+        10000,
+        20000,
+        50000,
+        100000,
+        200000,
+    ]
+    normRange = channelInputRanges[range] / maxADC.value
+    bufferV = np.ctypeslib.as_array(bufferADC) * normRange
     return bufferV
-    
+
 
 @dataclass
 class RawChannel:
