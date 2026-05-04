@@ -265,16 +265,16 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         for i in range(self._state["nshots"]):
             self._create_task()
             while not (status := ps2000.ps2000_ready(self.chandle)):  # not_ready = 0
-                await asyncio.sleep(self.time_indisposed)
+                await asyncio.sleep(0)  # better perfomance than using self.time_indisposed
             assert_pico2000_ok(status)
             sample = self._retrieve_sample()
             for name in self._raw_channel_names:
                 samples[name][i] = sample[name]
-            await asyncio.sleep(0.0)
+            await asyncio.sleep(0)
             # rerun measure if parameters have changed
             if self.state_change:
                 self.state_change = False
-                return self._measure_samples()
+                return await self._measure_samples()
         return samples
 
     def _retrieve_sample(self) -> Dict[str, List]:
