@@ -14,7 +14,6 @@ from picosdk.functions import adc2mV, mV2adc  # type: ignore
 from typing import Dict, Any, List
 from yaqd_core import IsSensor, IsDaemon, HasMeasureTrigger, HasMapping
 
-
 # todo: parse range codes based on psx000.PSx000_VOLTAGE_RANGE dict
 # ranges = [0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20]
 # code_to_range = {i+1: ranges[i] for i in range(len(ranges))}
