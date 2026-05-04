@@ -9,7 +9,7 @@ import pathlib
 import importlib.util
 import sys
 
-from picosdk.functions import adc2mV, mV2adc  # type: ignore
+from picosdk.functions import mV2adc
 from picosdk.ps2000 import ps2000  # type: ignore
 from picosdk.functions import assert_pico2000_ok, PicoSDKCtypesError  # type: ignore
 
@@ -39,7 +39,7 @@ wave_type_to_code = {
 
 # maximum ADC count value
 # drivers normalize to 16 bit (15 bit signed) regardless of resolution
-maxADC = ctypes.c_uint16(2**15)
+__maxADC__ = ctypes.c_uint16(2**15)
 
 
 def import_from_path(module_name, file_path):
@@ -49,6 +49,15 @@ def import_from_path(module_name, file_path):
     spec.loader.exec_module(module)
     return module
 
+
+def adc2mV(bufferADC, range, maxADC=__maxADC__):
+    # don't use builtins; mv2adc vectorization speeds up my retrieval of (3000 samples x 1000 replicates) by 5x
+    # https://github.com/picotech/picosdk-python-wrappers/pull/56 --- thanks fedetony
+    channelInputRanges = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000]
+    normRange = channelInputRanges[range]/maxADC.value
+    bufferV =  np.ctypeslib.as_array(bufferADC) * normRange
+    return bufferV
+    
 
 @dataclass
 class RawChannel:
@@ -60,10 +69,10 @@ class RawChannel:
     invert: bool
 
     def volts_to_adc(self, x):
-        return mV2adc(x * 1e3, range_to_code[self.range], maxADC)
+        return mV2adc(x * 1e3, range_to_code[self.range], __maxADC__)
 
     def adc_to_volts(self, x):
-        return np.array(adc2mV(x, range_to_code[self.range], maxADC)) / 1e3
+        return np.array(adc2mV(x, range_to_code[self.range], __maxADC__)) / 1e3
 
 
 class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
