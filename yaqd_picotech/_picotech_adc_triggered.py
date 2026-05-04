@@ -215,8 +215,6 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
     async def _measure(self):
         start = time()
         samples = await self._measure_samples()
-        finish = time()
-        self.logger.debug(f"samples acquired {(finish - start):0.4f}")
         # samples value shapes: (nshots, samples)
         # invert
         for k, inv in zip(samples.keys(), self._raw_inverts):
@@ -246,6 +244,8 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
             self._channel_mappings = out_mappings
             for k, v in zip(out_names, out_sig):
                 self._channel_shapes[k] = [] if type(v) in [float, int] else v.shape
+        finish = time()
+        self.logger.debug(f"total time: {(finish - start):0.4f}")
         return {k: v for k, v in zip(out_names, out_sig)}
 
     async def _measure_samples(self):
@@ -261,13 +261,22 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
             for c in self._raw_enabled_channels
         }
 
-        # TODO: consider using a produce/consume workflow
+        t1 = []
+        t2 = []
+        t3 = []
         for i in range(self._state["nshots"]):
+            t_start = time()
             self._create_task()
+            t_create = time()
             while not (status := ps2000.ps2000_ready(self.chandle)):  # not_ready = 0
                 await asyncio.sleep(0)  # better perfomance than using self.time_indisposed
             assert_pico2000_ok(status)
+            t_ready = time()
             sample = self._retrieve_sample()
+            t_retrieved = time()
+            t1.append(t_create - t_start)
+            t2.append(t_ready - t_create)
+            t3.append(t_retrieved - t_ready)
             for name in self._raw_channel_names:
                 samples[name][i] = sample[name]
             await asyncio.sleep(0)
@@ -275,6 +284,10 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
             if self.state_change:
                 self.state_change = False
                 return await self._measure_samples()
+
+        self.logger.info(f"setup={sum(t1)} sec")
+        self.logger.info(f"wait={sum(t2)} sec")
+        self.logger.info(f"retrieve={sum(t3)} sec")
         return samples
 
     def _retrieve_sample(self) -> Dict[str, List]:
