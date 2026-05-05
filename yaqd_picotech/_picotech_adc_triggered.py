@@ -17,6 +17,7 @@ from typing import Dict, Any, List
 from yaqd_core import IsSensor, IsDaemon, HasMeasureTrigger, HasMapping
 from ._constants import Waveform, __maxADC__, ChannelRange
 
+<<<<<<< photon-counting
 
 def import_from_path(module_name, file_path):
     spec = importlib.util.spec_from_file_location(module_name, file_path)
@@ -24,6 +25,23 @@ def import_from_path(module_name, file_path):
     sys.modules[module_name] = module
     spec.loader.exec_module(module)
     return module
+=======
+# todo: parse range codes based on psx000.PSx000_VOLTAGE_RANGE dict
+# ranges = [0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20]
+# code_to_range = {i+1: ranges[i] for i in range(len(ranges))}
+range_to_code = {
+    "_20_mV": 1,
+    "_50_mV": 2,
+    "_100_mV": 3,
+    "_200_mV": 4,
+    "_500_mV": 5,
+    "_1_V": 6,
+    "_2_V": 7,
+    "_5_V": 8,
+    "_10_V": 9,
+    "_20_V": 10,
+}
+>>>>>>> main
 
 
 def adc2mV(bufferADC, range: ChannelRange, maxADC=__maxADC__):
