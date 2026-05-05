@@ -349,8 +349,11 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         self.state_change = True
         self._state["nshots"] = nshots
 
-    def enable_threshold(self, flag: bool):
+    def set_threshold_enabled(self, flag: bool):
         self._state["threshold_enabled"] = flag
+
+    def get_threshold_enabled(self) -> bool:
+        return self._state["threshold_enabled"]
 
     def get_threshold(self) -> float:
         return self._state["threshold"]

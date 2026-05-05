@@ -148,10 +148,16 @@ response = "float"
 doc = "Set the lower threshold limit below which scope trace values will be masked."
 request = [{"name"="threshold", "type"="float"}]
 
-[messages.enable_threshold]
+[messages.set_threshold_enabled]
 doc = "When enabled, the threshold will mask values in scope traces that are less than the threshold."
 request = [{"name"="enable", "type"="boolean"}]
 
+[messages.get_threshold_enabled]
+doc = "Check whether threshold is enabled"
+response = "boolean"
+
+
+[properties]
 
 [properties.nshots]
 type = "int"
@@ -164,5 +170,12 @@ record_kind = "data"
 type = "float"
 getter = "get_nshots"
 setter = "set_nshots"
+control_kind = "normal"
+record_kind = "metadata"
+
+[properties.threshold_enabled]
+type = "boolean"
+setter = "set_threshold_enabled"
+getter = "get_threshold_enabled"
 control_kind = "normal"
 record_kind = "metadata"
