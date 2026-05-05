@@ -16,10 +16,10 @@ trigger_channel = "B"
 [scope.channels.A]
 enabled = true
 coupling = "DC"
-range = "2 V"
+range = "_2_V"
 
 [scope.channels.B]
 enabled = true
 coupling = "DC"
-range = "5 V"
+range = "_5_V"
 invert = false

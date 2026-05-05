@@ -6,9 +6,8 @@ import numpy as np  # type: ignore
 from dataclasses import dataclass
 from time import sleep, time
 import pathlib
-import imp
-
-# import toml
+import importlib.util
+import sys
 
 from picosdk.functions import adc2mV, mV2adc  # type: ignore
 from typing import Dict, Any, List
@@ -19,16 +18,16 @@ from yaqd_core import IsSensor, IsDaemon, HasMeasureTrigger, HasMapping
 # ranges = [0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20]
 # code_to_range = {i+1: ranges[i] for i in range(len(ranges))}
 range_to_code = {
-    "20 mV": 1,
-    "50 mV": 2,
-    "100 mV": 3,
-    "200 mV": 4,
-    "500 mV": 5,
-    "1 V": 6,
-    "2 V": 7,
-    "5 V": 8,
-    "10 V": 9,
-    "20 V": 10,
+    "_20_mV": 1,
+    "_50_mV": 2,
+    "_100_mV": 3,
+    "_200_mV": 4,
+    "_500_mV": 5,
+    "_1_V": 6,
+    "_2_V": 7,
+    "_5_V": 8,
+    "_10_V": 9,
+    "_20_V": 10,
 }
 
 wave_type_to_code = {
@@ -38,6 +37,14 @@ wave_type_to_code = {
 # maximum ADC count value
 # drivers normalize to 16 bit (15 bit signed) regardless of resolution
 maxADC = ctypes.c_uint16(2**15)
+
+
+def import_from_path(module_name, file_path):
+    spec = importlib.util.spec_from_file_location(module_name, file_path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 @dataclass
@@ -88,11 +95,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         path = pathlib.Path(self._config["shots_processing_path"])
         if not path.is_absolute():
             path = (pathlib.Path(config_filepath).parent / path).resolve()
-
-        name = path.stem
-        directory = path.parent
-        f, p, d = imp.find_module(name, [directory])
-        self.processing_module = imp.load_module(name, f, p, d)
+        self.processing_module = import_from_path("processing_module", path)
 
         # finish
         self._open_unit()
