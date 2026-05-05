@@ -2,7 +2,7 @@ __all__ = ["PicotechAdcTriggered"]
 
 import asyncio
 import ctypes
-import numpy as np  # type: ignore
+import numpy as np
 from dataclasses import dataclass
 from time import sleep, time
 import pathlib
@@ -10,36 +10,12 @@ import importlib.util
 import sys
 
 from picosdk.functions import mV2adc
-from picosdk.ps2000 import ps2000  # type: ignore
-from picosdk.functions import assert_pico2000_ok, PicoSDKCtypesError  # type: ignore
+from picosdk.ps2000 import ps2000
+from picosdk.functions import assert_pico2000_ok, PicoSDKCtypesError
 
 from typing import Dict, Any, List
 from yaqd_core import IsSensor, IsDaemon, HasMeasureTrigger, HasMapping
-
-
-# todo: parse range codes based on psx000.PSx000_VOLTAGE_RANGE dict
-# ranges = [0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20]
-# code_to_range = {i+1: ranges[i] for i in range(len(ranges))}
-range_to_code = {
-    "_20_mV": 1,
-    "_50_mV": 2,
-    "_100_mV": 3,
-    "_200_mV": 4,
-    "_500_mV": 5,
-    "_1_V": 6,
-    "_2_V": 7,
-    "_5_V": 8,
-    "_10_V": 9,
-    "_20_V": 10,
-}
-
-wave_type_to_code = {
-    k: i for i, k in enumerate(["sine", "square", "triangle", "ramp_up", "ramp_down", "dc"])
-}
-
-# maximum ADC count value
-# drivers normalize to 16 bit (15 bit signed) regardless of resolution
-__maxADC__ = ctypes.c_uint16(2**15)
+from ._constants import channelInputRanges, Waveform, range_to_code, __maxADC__
 
 
 def import_from_path(module_name, file_path):
@@ -51,24 +27,8 @@ def import_from_path(module_name, file_path):
 
 
 def adc2mV(bufferADC, range, maxADC=__maxADC__):
-    # don't use builtins; mv2adc vectorization speeds up my retrieval of (3000 samples x 1000 replicates) by 5x
+    # don't use sdk version; mv2adc vectorization speeds up my retrieval of (3000 samples x 1000 replicates) by ~5x
     # https://github.com/picotech/picosdk-python-wrappers/pull/56 --- thanks fedetony
-    channelInputRanges = [
-        10,
-        20,
-        50,
-        100,
-        200,
-        500,
-        1000,
-        2000,
-        5000,
-        10000,
-        20000,
-        50000,
-        100000,
-        200000,
-    ]
     normRange = channelInputRanges[range] / maxADC.value
     bufferV = np.ctypeslib.as_array(bufferADC) * normRange
     return bufferV
@@ -180,7 +140,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
             self.chandle,
             500000,  # offset voltage (uV)
             ctypes.c_uint32(1000000),  # peak-to-peak voltage (uV)
-            wave_type_to_code["square"],  # wavetype code
+            Waveform.SQUARE,  # wavetype code
             1000,  # start frequency (Hz)
             1000,  # stop frequency (Hz)
             0,  # increment frequency per `dwell_time`

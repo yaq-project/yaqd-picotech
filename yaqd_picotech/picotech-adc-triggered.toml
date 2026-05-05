@@ -17,16 +17,10 @@ linux_c_libraries = "https://www.picotech.com/downloads/linux"
 [installation]
 PyPI = "https://pypi.org/project/yaqd-picotech"
 
-# todo: implement these types
-[[types]]
-type = "enum"
-name = "processing_method"
-symbols = ["average", "sum", "min", "max"]
-
 [[types]]
 type = "enum"
 name = "adc_range"
-symbols = ["_20_mV", "_50_mV", "_100_mV", "_200_mV", "_500_mV", "_1_V", "_2_V", "_5_V", "_10_V", "_20_V"]
+symbols = ["mV_20", "mV_50", "mV_100", "mV_200", "mV_500", "V_1", "V_2", "V_5", "V_10", "V_20"]
 
 [[types]]
 type = "enum"
@@ -37,10 +31,9 @@ symbols = ["DC", "AC"]
 type = "record"
 name = "channel"
 fields = [
-	# {"name"="label", "type"=["null", "string"], "default"="__null__"},
     {"name"="enabled", "type"="boolean", "default"=false},
     {"name"="coupling", "type"="adc_coupling", "default"="DC"},
-	{"name"="range", "type"="adc_range", "default"="5 V"},
+	{"name"="range", "type"="adc_range", "default"="V_5", "doc"="input half-range (in mV)"},
 	{"name"="invert", "type"="boolean", "default"=false},
 ]
 
