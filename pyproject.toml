@@ -8,7 +8,7 @@ authors = [{name="Dan Kohler", email="ddkohler@wisc.edu"}]
 requires-python = ">=3.7"
 dependencies = ["yaqd-core>=2020.12.0", "picosdk", "numpy"]
 license = "ISC"
-readme = {file = "README.txt", content-type = "text/markdown"}
+readme = {file = "README.md", content-type = "text/markdown"}
 dynamic = ["version"]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
@@ -31,9 +31,6 @@ gui = [
 dev = ["black", "pre-commit"]
 
 [project.scripts]
-yaqd-picotech-adc-triggered = "yaqd_picotech._picotech_adc_triggered:PicotechAdcTriggered.main"
-
-[project.entry-points."spam.magical"]
 yaqd-picotech-adc-triggered = "yaqd_picotech._picotech_adc_triggered:PicotechAdcTriggered.main"
 
 [project.urls]
