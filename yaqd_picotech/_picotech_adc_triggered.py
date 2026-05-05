@@ -4,7 +4,7 @@ import asyncio
 import ctypes
 import numpy as np
 from dataclasses import dataclass
-from time import sleep, time
+from time import time
 import pathlib
 import importlib.util
 import sys
@@ -90,7 +90,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         # finish
         self._open_unit()
         self.state_change = False
-        self.measure(loop=self._config["loop_at_startup"])
+        self.measure()
 
     def _open_unit(self):
         status = ps2000.ps2000_open_unit()
@@ -212,7 +212,6 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
             self.logger.info(f"{ignore.sum()=}")
             self._samples["A"][ignore] = 0
         # process
-        self.logger.info(f"{self._raw_channel_names=}")
         try:
             out = self.processing_module.process(
                 self._samples, self._raw_channel_names, self._raw_channel_units
@@ -296,18 +295,11 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         return sample
 
     def close(self) -> None:
-        self.stop_looping()
-
-        while True:
-            try:
-                status = ps2000.ps2000_close_unit(self.chandle)
-                assert_pico2000_ok(status)
-            except PicoSDKCtypesError:
-                print("close failed with status; retrying")
-                sleep(0.1)
-            else:
-                break
-        return
+        try:
+            status = ps2000.ps2000_close_unit(self.chandle)
+            assert_pico2000_ok(status)
+        except PicoSDKCtypesError:
+            print(f"close failed with {status=}")
 
     def get_measured_samples(self) -> np.ndarray:
         """shape [channels, shots, samples]"""
