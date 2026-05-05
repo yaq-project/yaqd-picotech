@@ -26,7 +26,7 @@ def import_from_path(module_name, file_path):
     return module
 
 
-def adc2mV(bufferADC, range:ChannelRange, maxADC=__maxADC__):
+def adc2mV(bufferADC, range: ChannelRange, maxADC=__maxADC__):
     # don't use sdk version; mv2adc vectorization speeds up my retrieval of (3000 samples x 1000 replicates) by ~5x
     # https://github.com/picotech/picosdk-python-wrappers/pull/56 --- thanks fedetony
     normRange = range.value[1] / maxADC.value
