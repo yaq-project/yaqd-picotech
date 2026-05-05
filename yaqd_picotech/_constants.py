@@ -1,7 +1,6 @@
 from enum import Enum
 import ctypes
 
-
 # maximum ADC count value
 # drivers normalize to 16 bit (15 bit signed) regardless of resolution
 __maxADC__ = ctypes.c_uint16(2**15)
