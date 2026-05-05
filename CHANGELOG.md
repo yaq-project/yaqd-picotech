@@ -5,6 +5,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed
+- pyproject.toml updated; gui dependencies are separated
+- nshots is now a property
+
+### Fixed
+- imp is deprecated; replace with importlib
+- use valid avro enums for channel ranges
+
+
 ## [2022.4.0]
 
 ### changed
