@@ -34,6 +34,14 @@ def adc2mV(bufferADC, range:ChannelRange, maxADC=__maxADC__):
     return bufferV
 
 
+def import_from_path(module_name, file_path):
+    spec = importlib.util.spec_from_file_location(module_name, file_path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
 @dataclass
 class RawChannel:
     # TODO: condense name and index to ChannelName enum
