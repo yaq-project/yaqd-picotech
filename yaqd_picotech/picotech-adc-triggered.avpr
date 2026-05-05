@@ -137,16 +137,6 @@
             "request": [],
             "response": "boolean"
         },
-        "enable_threshold": {
-            "doc": "When enabled, the threshold will mask values in scope traces that are less than the threshold.",
-            "request": [
-                {
-                    "name": "enable",
-                    "type": "boolean"
-                }
-            ],
-            "response": "null"
-        },
         "get_channel_mappings": {
             "doc": "Defines which mapping keys apply to which channel keys. Each channel may have zero or many mappings. Mappings must broadcast into corresponding channels.",
             "origin": "has-mapping",
@@ -277,6 +267,11 @@
             "request": [],
             "response": "float"
         },
+        "get_threshold_enabled": {
+            "doc": "Check whether threshold is enabled",
+            "request": [],
+            "response": "boolean"
+        },
         "id": {
             "doc": "JSON object with information to identify the daemon, including name, kind, make, model, serial.\n",
             "origin": "is-daemon",
@@ -321,6 +316,16 @@
             ],
             "response": "null"
         },
+        "set_threshold_enabled": {
+            "doc": "When enabled, the threshold will mask values in scope traces that are less than the threshold.",
+            "request": [
+                {
+                    "name": "enable",
+                    "type": "boolean"
+                }
+            ],
+            "response": "null"
+        },
         "shutdown": {
             "doc": "Cleanly shutdown (or restart) daemon.",
             "origin": "is-daemon",
@@ -361,6 +366,17 @@
             "record_kind": "metadata",
             "setter": "set_nshots",
             "type": "float",
+            "units_getter": null
+        },
+        "threshold_enabled": {
+            "control_kind": "normal",
+            "dynamic": true,
+            "getter": "get_threshold_enabled",
+            "limits_getter": null,
+            "options_getter": null,
+            "record_kind": "metadata",
+            "setter": "set_threshold_enabled",
+            "type": "boolean",
             "units_getter": null
         }
     },
