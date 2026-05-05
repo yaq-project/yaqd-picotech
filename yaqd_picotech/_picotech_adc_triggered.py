@@ -15,7 +15,7 @@ from picosdk.functions import assert_pico2000_ok, PicoSDKCtypesError
 
 from typing import Dict, Any, List
 from yaqd_core import IsSensor, IsDaemon, HasMeasureTrigger, HasMapping
-from ._constants import channelInputRanges, Waveform, range_to_code, __maxADC__
+from ._constants import Waveform, __maxADC__, ChannelRange
 
 
 def import_from_path(module_name, file_path):
@@ -26,28 +26,30 @@ def import_from_path(module_name, file_path):
     return module
 
 
-def adc2mV(bufferADC, range, maxADC=__maxADC__):
+def adc2mV(bufferADC, range:ChannelRange, maxADC=__maxADC__):
     # don't use sdk version; mv2adc vectorization speeds up my retrieval of (3000 samples x 1000 replicates) by ~5x
     # https://github.com/picotech/picosdk-python-wrappers/pull/56 --- thanks fedetony
-    normRange = channelInputRanges[range] / maxADC.value
+    normRange = range.value[1] / maxADC.value
     bufferV = np.ctypeslib.as_array(bufferADC) * normRange
     return bufferV
 
 
 @dataclass
 class RawChannel:
+    # TODO: condense name and index to ChannelName enum
     name: str
     index: int
-    range: str
+    range: ChannelRange
     enabled: bool
+    # TODO: Coupling enum
     coupling: str
     invert: bool
 
     def volts_to_adc(self, x):
-        return mV2adc(x * 1e3, range_to_code[self.range], __maxADC__)
+        return mV2adc(x * 1e3, self.range.value[0], __maxADC__)
 
     def adc_to_volts(self, x):
-        return np.array(adc2mV(x, range_to_code[self.range], __maxADC__)) / 1e3
+        return np.array(adc2mV(x, self.range, __maxADC__)) / 1e3
 
 
 class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
@@ -58,6 +60,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         self._raw_channels = []
         self._raw_enabled_channels = []
         for name, d in self._config["channels"].items():
+            d["range"] = ChannelRange[d["range"]]
             channel = RawChannel(**d, index="ABCD".index(name), name=name)
             self._raw_channels.append(channel)
             if channel.enabled:
@@ -115,7 +118,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
                 c.index,  # channel
                 enabled,
                 c.coupling == "DC",  # dc (True) / ac (False)
-                range_to_code[c.range],
+                c.range.value[0],
             )
             assert_pico2000_ok(status)
 
