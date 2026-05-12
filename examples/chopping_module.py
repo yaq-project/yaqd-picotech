@@ -1,4 +1,4 @@
-import pathlib
+import numpy as np
 
 
 def process(arrs: dict, names, units):
@@ -24,84 +24,20 @@ def process(arrs: dict, names, units):
     # b = ~a
     A_diff = arrs["A"][on].mean() - arrs["A"][~on].mean()
 
-    out = [arr.mean() for arr in arrs.values()]
-    out.append(A_diff)
-    out_names = [name + "_mean" for name in names]
-    out_names.append(names[0] + "_diff")
-    out_units = {name: "V" for name in out_names}
-    return [out, out_names, out_units]
+    # counting pulses
+    d_aa = np.sign(np.diff(arrs["A"], axis=1, prepend=0))
+    dd_aa = np.diff(d_aa, append=0)
+    count_rising = ((dd_aa < 0) & (d_aa==1)).astype(np.int8)
+    # count_falling = ((dd_aa > 0) & (d_aa==-1)).astype(np.int8)
 
+    A_count = count_rising.sum()
+    count_rising[~on] *= -1
+    A_count_diff = count_rising.sum()
 
-if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-    import numpy as np
+    out = {name + "_mean" : arr.mean() for name, arr in zip(names, arrs)}
+    out[names[0] + "_diff"] = A_diff
+    out[names[0] + "_count"] = A_count
+    out[names[0] + "_count_diff"] = A_count_diff
 
-    here = pathlib.Path(__file__).resolve().parent
-    saved = here / "data.npz"
-    if saved.exists():
-        arrs = np.load(saved)
-        t = arrs["t"]
-        chA = arrs["chA"]
-        chB = arrs["chB"]
-    else:
-        data_paths = list((here / "20260324").glob("*.csv"))
-
-        def convert_infinity(s):
-            # Decode if necessary (if encoding='bytes' is used)
-            s = s.decode("utf-8") if isinstance(s, bytes) else s
-            s = s.strip()
-            if s == "∞" or s.lower() == "inf":
-                return float("inf")
-            elif s == "-∞" or s.lower() == "-inf":
-                return float("-inf")
-            return float(s)
-
-        datas = []
-        for data_path in (here / "20260324").glob("*.csv"):
-            print(data_path.name)
-            datas.append(
-                np.loadtxt(
-                    data_path,
-                    unpack=True,
-                    dtype=float,
-                    skiprows=3,
-                    delimiter=",",
-                    converters=convert_infinity,
-                )
-            )
-        datas = np.array(datas)
-        print(datas.shape)
-        t, chA, chB = np.unstack(datas, axis=1)
-        np.savez(saved, t=t, chA=chA, chB=chB)
-
-    chB -= 2.5
-    threshold = 20
-
-    # detect counts to reduce noise thresholds
-    if False:
-        chA[-chA < threshold] = 0
-        mean = chA.mean(axis=0)
-        mean = np.convolve(mean, np.ones(10) / 10, mode="same")
-        fig, ax = plt.subplots()
-        # ax.plot(t, chA, c="k", alpha=0.2) # .mean(axis=0))
-        ax.plot(t[0], mean, c="r", lw=1)  # .mean(axis=0))
-        ax.plot(t, chB, c="b", alpha=0.1)  # .mean(axis=0))
-        # ax.set_ylim(-30,30)
-        fig.savefig(here / "test.png")
-    if True:  # detect photon events, try to treat them all as equal
-        # chA[-chA < threshold] = 0
-        chA[chA == -np.inf] = -250
-        grad = np.gradient(chA, axis=1)
-        grad[grad > -10] = 0
-        grad[grad <= -10] = 1
-
-        mean = grad.mean(axis=0)
-        mean = np.convolve(mean, np.ones(10) / 10, mode="same")
-
-        fig, ax = plt.subplots()
-        # ax.plot(t[0], mean, c="k")
-        # ax.plot(t[0], grad[2], c="k")
-        ax.plot(t[0], chA[3], c="k")
-        # ax.set_xlim(-5,5)
-
-        fig.savefig(here / "test_edge_detect.png", dpi=200)
+    out_units = {name: None if "count" in name else "V" for name in out.keys()}
+    return [list(out.values()), list(out.keys()), out_units]
