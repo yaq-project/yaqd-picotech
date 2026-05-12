@@ -156,6 +156,13 @@ request = [{"name"="enable", "type"="boolean"}]
 doc = "Check whether threshold is enabled"
 response = "boolean"
 
+[messages.get_scope_time_params]
+doc = ""
+response = "list"
+
+[messages.get_scope_time_params_units]
+doc = ""
+response = "str"
 
 [properties]
 
@@ -179,3 +186,9 @@ setter = "set_threshold_enabled"
 getter = "get_threshold_enabled"
 control_kind = "normal"
 record_kind = "metadata"
+
+[properties.scope_time_params]
+type = "list"
+getter = "get_scope_time_params"
+units_getter = "get_scope_time_units"
+dynamic = "false"

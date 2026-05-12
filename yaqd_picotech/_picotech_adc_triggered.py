@@ -70,8 +70,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         self._raw_inverts = [[1, -1][c.invert] for c in self._raw_enabled_channels]
         self._samples = {}
 
-        # ddk: I believe these are the native units of all models
-        self._mapping_units["time"] = "ns"
+        self._time_units = "ns"
 
         # check that all physical channels are unique
         x = []
@@ -180,7 +179,8 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         time = np.arange(self._config["max_samples"], dtype=float) * self.time_interval
         # offset for delay
         time += time.max() * self._config["trigger_delay"] / 100
-        self._mappings["time"] = time
+        self.scope_time = time
+        self.scope_time_params = (time.min(), time.max(), time.size)  # like for linspace
 
         # todo: readout params on failure
         assert_pico2000_ok(status)
@@ -326,6 +326,15 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
 
     def set_threshold(self, val: float):
         self._state["threshold"] = val
+
+    def get_scope_time_params(self) -> tuple[float,float,float]:
+        return self.scope_time_params
+
+    def get_scope_time_units(self) -> str:
+        return self._time_units
+
+    def get_scope_time(self) -> np.array:
+        return self.scope_time
 
 
 if __name__ == "__main__":
