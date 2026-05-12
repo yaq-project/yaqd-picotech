@@ -27,14 +27,14 @@ def process(arrs: dict, names, units):
     # counting pulses
     d_aa = np.sign(np.diff(arrs["A"], axis=1, prepend=0))
     dd_aa = np.diff(d_aa, append=0)
-    count_rising = ((dd_aa < 0) & (d_aa==1)).astype(np.int8)
+    count_rising = ((dd_aa < 0) & (d_aa == 1)).astype(np.int8)
     # count_falling = ((dd_aa > 0) & (d_aa==-1)).astype(np.int8)
 
     A_count = count_rising.sum()
     count_rising[~on] *= -1
     A_count_diff = count_rising.sum()
 
-    out = {name + "_mean" : arr.mean() for name, arr in zip(names, arrs)}
+    out = {name + "_mean": arr.mean() for name, arr in zip(names, arrs)}
     out[names[0] + "_diff"] = A_diff
     out[names[0] + "_count"] = A_count
     out[names[0] + "_count_diff"] = A_count_diff
