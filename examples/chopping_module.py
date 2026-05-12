@@ -1,14 +1,14 @@
 import numpy as np
 
 
-def process(arrs: dict, names, units):
+def process(arrs: dict, names: list, units: list):
     """
     For each channel overall mean
 
     Parameters
     ----------
-    arrs : list
-        list of ndarrays (shots, time) for each raw channel
+    arrs : dict
+        channel name key, values of ndarrays (shots, time) for each raw channel
     names : list of str
         A list of input names for each raw channel
     units : list of units
@@ -27,13 +27,12 @@ def process(arrs: dict, names, units):
     # counting pulses
     d_aa = np.sign(np.diff(arrs["A"], axis=1, prepend=0))
     dd_aa = np.diff(d_aa, append=0)
-    count_rising = ((dd_aa < 0) & (d_aa > 0)).astype(np.int8)
+    count_rising = ((dd_aa < 0) & (d_aa > 0)).astype(np.bool)
 
     A_count = count_rising.sum()
-    count_rising[~on] *= -1
-    A_count_diff = count_rising.sum()
+    A_count_diff = count_rising[on].sum() - count_rising[~on].sum()
 
-    out = {name + "_mean": arr.mean() for name, arr in zip(names, arrs)}
+    out = {name + "_mean": arr.mean() for name, arr in arrs.items()}
     out[names[0] + "_diff"] = A_diff
     out[names[0] + "_count"] = A_count
     out[names[0] + "_count_diff"] = A_count_diff
