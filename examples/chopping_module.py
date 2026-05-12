@@ -27,8 +27,7 @@ def process(arrs: dict, names, units):
     # counting pulses
     d_aa = np.sign(np.diff(arrs["A"], axis=1, prepend=0))
     dd_aa = np.diff(d_aa, append=0)
-    count_rising = ((dd_aa < 0) & (d_aa == 1)).astype(np.int8)
-    # count_falling = ((dd_aa > 0) & (d_aa==-1)).astype(np.int8)
+    count_rising = ((dd_aa < 0) & (d_aa > 0)).astype(np.int8)
 
     A_count = count_rising.sum()
     count_rising[~on] *= -1
