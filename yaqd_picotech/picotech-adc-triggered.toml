@@ -156,13 +156,16 @@ request = [{"name"="enable", "type"="boolean"}]
 doc = "Check whether threshold is enabled"
 response = "boolean"
 
-[messages.get_scope_time_params]
-doc = ""
-response = "list"
+[messages.get_scope_dt]
+doc = "The time interval between samples in the scope traces.  Corresponds to config parameter 'timebase'."
+response = "float"
 
-[messages.get_scope_time_params_units]
-doc = ""
-response = "str"
+[messages.get_scope_time_units]
+response = "string"
+
+[messages.get_scope_time]
+doc = "Return the array of time points corresponding to a scope trace."
+response = {"type"="array", "items"="float"}
 
 [properties]
 
@@ -187,8 +190,10 @@ getter = "get_threshold_enabled"
 control_kind = "normal"
 record_kind = "metadata"
 
-[properties.scope_time_params]
-type = "list"
-getter = "get_scope_time_params"
+[properties.scope_dt]
+type = "float"
+getter = "get_scope_dt"
 units_getter = "get_scope_time_units"
 dynamic = "false"
+control_kind = "normal"
+record_kind = "metadata"

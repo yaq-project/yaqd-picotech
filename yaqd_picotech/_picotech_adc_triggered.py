@@ -180,7 +180,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         # offset for delay
         time += time.max() * self._config["trigger_delay"] / 100
         self.scope_time = time
-        self.scope_time_params = (time.min(), time.max(), time.size)  # like for linspace
+        self.scope_dt = self.time_interval
 
         # todo: readout params on failure
         assert_pico2000_ok(status)
@@ -327,8 +327,8 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
     def set_threshold(self, val: float):
         self._state["threshold"] = val
 
-    def get_scope_time_params(self) -> tuple[float,float,float]:
-        return self.scope_time_params
+    def get_scope_dt(self) -> tuple[float,float,float]:
+        return self.scope_dt
 
     def get_scope_time_units(self) -> str:
         return self._time_units

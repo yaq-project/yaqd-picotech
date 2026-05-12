@@ -256,6 +256,23 @@
             "request": [],
             "response": "int"
         },
+        "get_scope_dt": {
+            "doc": "The time interval between samples in the scope traces.  Corresponds to config parameter 'timebase'.",
+            "request": [],
+            "response": "float"
+        },
+        "get_scope_time": {
+            "doc": "Return the array of time points corresponding to a scope trace.",
+            "request": [],
+            "response": {
+                "items": "float",
+                "type": "array"
+            }
+        },
+        "get_scope_time_units": {
+            "request": [],
+            "response": "string"
+        },
         "get_state": {
             "doc": "Get version of the running daemon",
             "origin": "is-daemon",
@@ -356,6 +373,17 @@
             "setter": "set_nshots",
             "type": "int",
             "units_getter": null
+        },
+        "scope_dt": {
+            "control_kind": "normal",
+            "dynamic": true,
+            "getter": "get_scope_dt",
+            "limits_getter": null,
+            "options_getter": null,
+            "record_kind": "metadata",
+            "setter": null,
+            "type": "float",
+            "units_getter": "get_scope_time_units"
         },
         "threshold": {
             "control_kind": "normal",
