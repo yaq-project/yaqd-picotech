@@ -60,8 +60,8 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         self._raw_channels = []
         self._raw_enabled_channels = []
         for name, d in self._config["channels"].items():
-            updated = dict(range = ChannelRange[d["range"]])
-            channel = RawChannel(**(d|updated), index="ABCD".index(name), name=name)
+            updated = dict(range=ChannelRange[d["range"]])
+            channel = RawChannel(**(d | updated), index="ABCD".index(name), name=name)
             self._raw_channels.append(channel)
             if channel.enabled:
                 self._raw_enabled_channels.append(channel)
