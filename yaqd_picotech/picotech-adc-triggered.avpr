@@ -289,6 +289,10 @@
             "request": [],
             "response": "boolean"
         },
+        "get_threshold_units": {
+            "request": [],
+            "response": "string"
+        },
         "id": {
             "doc": "JSON object with information to identify the daemon, including name, kind, make, model, serial.\n",
             "origin": "is-daemon",
@@ -388,13 +392,13 @@
         "threshold": {
             "control_kind": "normal",
             "dynamic": true,
-            "getter": "get_nshots",
+            "getter": "get_threshold",
             "limits_getter": null,
             "options_getter": null,
             "record_kind": "metadata",
-            "setter": "set_nshots",
+            "setter": "set_threshold",
             "type": "float",
-            "units_getter": null
+            "units_getter": "get_threshold_units"
         },
         "threshold_enabled": {
             "control_kind": "normal",

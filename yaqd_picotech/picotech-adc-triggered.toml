@@ -144,6 +144,9 @@ request = [{"name"="nshots", "type"="int"}]
 doc = "Get the lower threshold limit below which scope trace values will be masked."
 response = "float"
 
+[messages.get_threshold_units]
+response = "string"
+
 [messages.set_threshold]
 doc = "Set the lower threshold limit below which scope trace values will be masked."
 request = [{"name"="threshold", "type"="float"}]
@@ -178,8 +181,9 @@ record_kind = "data"
 
 [properties.threshold]
 type = "float"
-getter = "get_nshots"
-setter = "set_nshots"
+getter = "get_threshold"
+setter = "set_threshold"
+units_getter = "get_threshold_units"
 control_kind = "normal"
 record_kind = "metadata"
 

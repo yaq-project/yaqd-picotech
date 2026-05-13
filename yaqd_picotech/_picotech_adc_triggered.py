@@ -327,6 +327,9 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
     def set_threshold(self, val: float):
         self._state["threshold"] = val
 
+    def get_threshold_units(self):
+        return "V"
+
     def get_scope_dt(self) -> float:
         return self.scope_dt
 
