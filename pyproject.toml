@@ -4,6 +4,7 @@ build-backend = "flit_core.buildapi"
 
 [project]
 name = "yaqd-picotech"
+description = "yaq daemons for Pico Technology oscilloscopes"
 authors = [{name="Dan Kohler", email="ddkohler@wisc.edu"}]
 requires-python = ">=3.7"
 dependencies = ["yaqd-core>=2020.12.0", "picosdk", "numpy"]
@@ -13,7 +14,6 @@ dynamic = ["version"]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: ISC License (ISCL)",
     "Natural Language :: English",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.7",
@@ -40,7 +40,7 @@ Homepage = "https://yaq.fyi"
 
 [tool.black]
 line-length = 99
-target-version = ['py37', 'py38']
+target-version = ['py312', 'py313']
 include = '\.pyi?$'
 exclude = '''
 /(

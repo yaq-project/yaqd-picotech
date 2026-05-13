@@ -256,9 +256,40 @@
             "request": [],
             "response": "int"
         },
+        "get_scope_dt": {
+            "doc": "The time interval between samples in the scope traces.  Corresponds to config parameter 'timebase'.",
+            "request": [],
+            "response": "float"
+        },
+        "get_scope_time": {
+            "doc": "Return the array of time points corresponding to a scope trace.",
+            "request": [],
+            "response": {
+                "items": "float",
+                "type": "array"
+            }
+        },
+        "get_scope_time_units": {
+            "request": [],
+            "response": "string"
+        },
         "get_state": {
             "doc": "Get version of the running daemon",
             "origin": "is-daemon",
+            "request": [],
+            "response": "string"
+        },
+        "get_threshold": {
+            "doc": "Get the lower threshold limit below which scope trace values will be masked.",
+            "request": [],
+            "response": "float"
+        },
+        "get_threshold_enabled": {
+            "doc": "Check whether threshold is enabled",
+            "request": [],
+            "response": "boolean"
+        },
+        "get_threshold_units": {
             "request": [],
             "response": "string"
         },
@@ -296,6 +327,26 @@
             ],
             "response": "null"
         },
+        "set_threshold": {
+            "doc": "Set the lower threshold limit below which scope trace values will be masked.",
+            "request": [
+                {
+                    "name": "threshold",
+                    "type": "float"
+                }
+            ],
+            "response": "null"
+        },
+        "set_threshold_enabled": {
+            "doc": "When enabled, the threshold will mask values in scope traces that are less than the threshold.",
+            "request": [
+                {
+                    "name": "enable",
+                    "type": "boolean"
+                }
+            ],
+            "response": "null"
+        },
         "shutdown": {
             "doc": "Cleanly shutdown (or restart) daemon.",
             "origin": "is-daemon",
@@ -326,6 +377,39 @@
             "setter": "set_nshots",
             "type": "int",
             "units_getter": null
+        },
+        "scope_dt": {
+            "control_kind": "normal",
+            "dynamic": true,
+            "getter": "get_scope_dt",
+            "limits_getter": null,
+            "options_getter": null,
+            "record_kind": "metadata",
+            "setter": null,
+            "type": "float",
+            "units_getter": "get_scope_time_units"
+        },
+        "threshold": {
+            "control_kind": "normal",
+            "dynamic": true,
+            "getter": "get_threshold",
+            "limits_getter": null,
+            "options_getter": null,
+            "record_kind": "metadata",
+            "setter": "set_threshold",
+            "type": "float",
+            "units_getter": "get_threshold_units"
+        },
+        "threshold_enabled": {
+            "control_kind": "normal",
+            "dynamic": true,
+            "getter": "get_threshold_enabled",
+            "limits_getter": null,
+            "options_getter": null,
+            "record_kind": "metadata",
+            "setter": "set_threshold_enabled",
+            "type": "boolean",
+            "units_getter": null
         }
     },
     "protocol": "picotech-adc-triggered",
@@ -334,6 +418,14 @@
         "nshots": {
             "default": 50,
             "type": "int"
+        },
+        "threshold": {
+            "default": 0,
+            "type": "float"
+        },
+        "threshold_enabled": {
+            "default": 0,
+            "type": "boolean"
         }
     },
     "traits": [
@@ -344,28 +436,18 @@
     ],
     "types": [
         {
-            "name": "processing_method",
-            "symbols": [
-                "average",
-                "sum",
-                "min",
-                "max"
-            ],
-            "type": "enum"
-        },
-        {
             "name": "adc_range",
             "symbols": [
-                "_20_mV",
-                "_50_mV",
-                "_100_mV",
-                "_200_mV",
-                "_500_mV",
-                "_1_V",
-                "_2_V",
-                "_5_V",
-                "_10_V",
-                "_20_V"
+                "mV_20",
+                "mV_50",
+                "mV_100",
+                "mV_200",
+                "mV_500",
+                "V_1",
+                "V_2",
+                "V_5",
+                "V_10",
+                "V_20"
             ],
             "type": "enum"
         },
@@ -390,7 +472,8 @@
                     "type": "adc_coupling"
                 },
                 {
-                    "default": "5 V",
+                    "default": "V_5",
+                    "doc": "input half-range (in mV)",
                     "name": "range",
                     "type": "adc_range"
                 },

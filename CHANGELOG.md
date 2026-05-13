@@ -5,13 +5,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+
 ### Changed
+- `picotech-adc-triggered`: new property `threshold` (good for photon counting, noise rejection)
+- `picotech-adc-triggered`: new property `threshold_enabled` to switch on or off threshold
+- `picotech-adc-triggered`: channel range enum changed for readability: "_50_mV" -> "mV_50"
+- on backend: constants refactored to enums
 - pyproject.toml updated; gui dependencies are separated
 - nshots is now a property
 
 ### Fixed
 - imp is deprecated; replace with importlib
 - use valid avro enums for channel ranges
+- added numpy vectorization to adc2mV conversion (drastic speedup)
 
 
 ## [2022.4.0]

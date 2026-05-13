@@ -2,40 +2,20 @@ __all__ = ["PicotechAdcTriggered"]
 
 import asyncio
 import ctypes
-import numpy as np  # type: ignore
+import numpy as np
 from dataclasses import dataclass
-from time import sleep, time
+from time import time
 import pathlib
 import importlib.util
 import sys
 
-from picosdk.functions import adc2mV, mV2adc  # type: ignore
+from picosdk.functions import mV2adc
+from picosdk.ps2000 import ps2000
+from picosdk.functions import assert_pico2000_ok, PicoSDKCtypesError
+
 from typing import Dict, Any, List
 from yaqd_core import IsSensor, IsDaemon, HasMeasureTrigger, HasMapping
-
-# todo: parse range codes based on psx000.PSx000_VOLTAGE_RANGE dict
-# ranges = [0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20]
-# code_to_range = {i+1: ranges[i] for i in range(len(ranges))}
-range_to_code = {
-    "_20_mV": 1,
-    "_50_mV": 2,
-    "_100_mV": 3,
-    "_200_mV": 4,
-    "_500_mV": 5,
-    "_1_V": 6,
-    "_2_V": 7,
-    "_5_V": 8,
-    "_10_V": 9,
-    "_20_V": 10,
-}
-
-wave_type_to_code = {
-    k: i for i, k in enumerate(["sine", "square", "triangle", "ramp_up", "ramp_down", "dc"])
-}
-
-# maximum ADC count value
-# drivers normalize to 16 bit (15 bit signed) regardless of resolution
-maxADC = ctypes.c_uint16(2**15)
+from ._constants import Waveform, __maxADC__, ChannelRange
 
 
 def import_from_path(module_name, file_path):
@@ -46,20 +26,30 @@ def import_from_path(module_name, file_path):
     return module
 
 
+def adc2mV(bufferADC, range: ChannelRange, maxADC=__maxADC__):
+    # don't use sdk version; mv2adc vectorization speeds up my retrieval of (3000 samples x 1000 replicates) by ~5x
+    # https://github.com/picotech/picosdk-python-wrappers/pull/56 --- thanks fedetony
+    normRange = range.value[1] / maxADC.value
+    bufferV = np.ctypeslib.as_array(bufferADC) * normRange
+    return bufferV
+
+
 @dataclass
 class RawChannel:
+    # TODO: condense name and index to ChannelName enum
     name: str
     index: int
-    range: str
+    range: ChannelRange
     enabled: bool
+    # TODO: Coupling enum
     coupling: str
     invert: bool
 
     def volts_to_adc(self, x):
-        return mV2adc(x * 1e3, range_to_code[self.range], maxADC)
+        return mV2adc(x * 1e3, self.range.value[0], __maxADC__)
 
     def adc_to_volts(self, x):
-        return np.array(adc2mV(x, range_to_code[self.range], maxADC)) / 1e3
+        return np.array(adc2mV(x, self.range, __maxADC__)) / 1e3
 
 
 class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
@@ -70,7 +60,8 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         self._raw_channels = []
         self._raw_enabled_channels = []
         for name, d in self._config["channels"].items():
-            channel = RawChannel(**d, index="ABCD".index(name), name=name)
+            updated = dict(range=ChannelRange[d["range"]])
+            channel = RawChannel(**(d | updated), index="ABCD".index(name), name=name)
             self._raw_channels.append(channel)
             if channel.enabled:
                 self._raw_enabled_channels.append(channel)
@@ -79,8 +70,7 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         self._raw_inverts = [[1, -1][c.invert] for c in self._raw_enabled_channels]
         self._samples = {}
 
-        # ddk: I believe these are the native units of all models
-        self._mapping_units["time"] = "ns"
+        self._time_units = "ns"
 
         # check that all physical channels are unique
         x = []
@@ -99,12 +89,9 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         # finish
         self._open_unit()
         self.state_change = False
-        self.measure(loop=self._config["loop_at_startup"])
+        self.measure()
 
     def _open_unit(self):
-        from picosdk.ps2000 import ps2000  # type: ignore
-        from picosdk.functions import assert_pico2000_ok  # type: ignore
-
         status = ps2000.ps2000_open_unit()
         assert_pico2000_ok(status)
         self.chandle = ctypes.c_int16(status)
@@ -116,9 +103,6 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         self._set_trigger()
 
     def _set_channels(self):
-        from picosdk.ps2000 import ps2000  # type: ignore
-        from picosdk.functions import assert_pico2000_ok  # type: ignore
-
         # enable channel if it is trigger?
         for c in self._raw_channels:
             if c.enabled or (
@@ -133,14 +117,11 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
                 c.index,  # channel
                 enabled,
                 c.coupling == "DC",  # dc (True) / ac (False)
-                range_to_code[c.range],
+                c.range.value[0],
             )
             assert_pico2000_ok(status)
 
     def _set_trigger(self):
-        from picosdk.ps2000 import ps2000  # type: ignore
-        from picosdk.functions import assert_pico2000_ok  # type: ignore
-
         trigger_channel = self._raw_channels["ABCD".index(self._config["trigger_channel"])]
         status = ps2000.ps2000_set_trigger(
             self.chandle,
@@ -156,15 +137,12 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         """
         generate 1 V p-p square wave at 1 kHz
         """
-        from picosdk.ps2000 import ps2000  # type: ignore
-        from picosdk.functions import assert_pico2000_ok  # type: ignore
-
         # awg
         status = ps2000.ps2000_set_sig_gen_built_in(
             self.chandle,
             500000,  # offset voltage (uV)
             ctypes.c_uint32(1000000),  # peak-to-peak voltage (uV)
-            wave_type_to_code["square"],  # wavetype code
+            Waveform.SQUARE,  # wavetype code
             1000,  # start frequency (Hz)
             1000,  # stop frequency (Hz)
             0,  # increment frequency per `dwell_time`
@@ -175,9 +153,6 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         assert_pico2000_ok(status)
 
     def _set_block_time(self):
-        from picosdk.ps2000 import ps2000  # type: ignore
-        from picosdk.functions import assert_pico2000_ok  # type: ignore
-
         maxSamplesReturn = ctypes.c_int32()
         oversample = ctypes.c_int16(self._config["oversample"])
         time_interval = ctypes.c_int32()
@@ -204,18 +179,15 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         time = np.arange(self._config["max_samples"], dtype=float) * self.time_interval
         # offset for delay
         time += time.max() * self._config["trigger_delay"] / 100
-        self._mappings["time"] = time
+        self.scope_time = time
+        self.scope_dt = self.time_interval
 
         # todo: readout params on failure
         assert_pico2000_ok(status)
 
     def _create_task(self):
-        from picosdk.ps2000 import ps2000  # type: ignore
-        from picosdk.functions import assert_pico2000_ok  # type: ignore
-
+        """estimate total acquisition time, then run acquisition"""
         time_indisposed_ms = ctypes.c_int32()
-        # pointer to approximate time DAQ takes to collect data
-        # i.e. (sample interval) x (number of points required)
         status = ps2000.ps2000_run_block(
             self.chandle,
             self._config["max_samples"],
@@ -224,21 +196,29 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
             ctypes.byref(time_indisposed_ms),
         )
         assert_pico2000_ok(status)
-        self.time_indisposed = max(time_indisposed_ms.value / 1e3, 1e-5)
+        # daq collection time is approximately (sample interval) x (number of points required)
+        self.time_indisposed = max(time_indisposed_ms.value / 1e3, 1e-5)  # seconds
 
     async def _measure(self):
         start = time()
-        samples = await self._loop.run_in_executor(None, self._measure_samples)
-        finish = time()
-        self.logger.debug(f"samples acquired {(finish - start):0.4f}")
+        samples = await self._measure_samples()
         # samples value shapes: (nshots, samples)
         # invert
         for k, inv in zip(samples.keys(), self._raw_inverts):
             self._samples[k] = samples[k] * inv
+        # filter samples
+        if self._state["threshold_enabled"]:
+            ignore = self._samples["A"] < self._state["threshold"]
+            self.logger.info(f"{ignore.sum()=}")
+            self._samples["A"][ignore] = 0
         # process
-        out = self.processing_module.process(
-            samples.values(), self._raw_channel_names, self._raw_channel_units
-        )
+        try:
+            out = self.processing_module.process(
+                self._samples, self._raw_channel_names, self._raw_channel_units
+            )
+        except Exception as e:
+            self.logger.error(e, stack_info=True)
+            raise e
         if len(out) == 4:
             out_sig, out_names, out_units, out_mappings = out
         else:
@@ -250,53 +230,56 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
             self._channel_mappings = out_mappings
             for k, v in zip(out_names, out_sig):
                 self._channel_shapes[k] = [] if type(v) in [float, int] else v.shape
-        # finish
-        if self.state_change:
-            self.state_change = False
-            return self._measure()
+        finish = time()
+        self.logger.debug(f"total time: {(finish - start):0.4f}")
         return {k: v for k, v in zip(out_names, out_sig)}
 
-    def _measure_samples(self):
+    async def _measure_samples(self):
         """
-        loop through shots
+        loop through samples (i.e. scope traces) and return the complete samples list
 
         returns
         -------
             dict key:channel, value: ndarray[shot][sample]
         """
-        from picosdk.ps2000 import ps2000  # type: ignore
-        from picosdk.functions import assert_pico2000_ok  # type: ignore
-
         samples = {
             c.name: np.zeros((self._state["nshots"], self._config["max_samples"]), dtype=float)
             for c in self._raw_enabled_channels
         }
-        self._create_task()
 
+        t1 = []
+        t2 = []
+        t3 = []
         for i in range(self._state["nshots"]):
-            while True:
-                status = ps2000.ps2000_ready(self.chandle)
-                if status != 0:  # not_ready = 0
-                    assert_pico2000_ok(status)
-                    break
-                if self.time_indisposed >= 0.1:
-                    sleep(self.time_indisposed)
-            sample = self._measure_sample()
+            t_start = time()
+            self._create_task()
+            t_create = time()
+            while not (status := ps2000.ps2000_ready(self.chandle)):  # not_ready = 0
+                await asyncio.sleep(0)  # better perfomance than using self.time_indisposed
+            assert_pico2000_ok(status)
+            t_ready = time()
+            sample = self._retrieve_sample()
+            t_retrieved = time()
+            t1.append(t_create - t_start)
+            t2.append(t_ready - t_create)
+            t3.append(t_retrieved - t_ready)
             for name in self._raw_channel_names:
                 samples[name][i] = sample[name]
+            await asyncio.sleep(0)
+            # rerun measure if parameters have changed
             if self.state_change:
                 self.state_change = False
-                return self._measure_samples()
-            self._create_task()
+                return await self._measure_samples()
+
+        self.logger.info(f"setup={sum(t1)} sec")
+        self.logger.info(f"wait={sum(t2)} sec")
+        self.logger.info(f"retrieve={sum(t3)} sec")
         return samples
 
-    def _measure_sample(self) -> Dict[str, List]:
+    def _retrieve_sample(self) -> Dict[str, List]:
         """
-        retrieve samples from single shot
+        retrieve sample (i.e. a single scope trace)
         """
-        from picosdk.ps2000 import ps2000  # type: ignore
-        from picosdk.functions import assert_pico2000_ok  # type: ignore
-
         buffers = [(ctypes.c_int16 * self._config["max_samples"])() for _ in range(4)]
         overflow = ctypes.c_int16()  # bit pattern on whether overflow has occurred
 
@@ -312,20 +295,11 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         return sample
 
     def close(self) -> None:
-        self.stop_looping()
-        from picosdk.ps2000 import ps2000  # type: ignore
-        from picosdk.functions import assert_pico2000_ok, PicoSDKCtypesError  # type: ignore
-
-        while True:
-            try:
-                status = ps2000.ps2000_close_unit(self.chandle)
-                assert_pico2000_ok(status)
-            except PicoSDKCtypesError:
-                print("close failed; retrying")
-                sleep(0.1)
-            else:
-                break
-        return
+        try:
+            status = ps2000.ps2000_close_unit(self.chandle)
+            assert_pico2000_ok(status)
+        except PicoSDKCtypesError:
+            print(f"close failed with {status=}")
 
     def get_measured_samples(self) -> np.ndarray:
         """shape [channels, shots, samples]"""
@@ -340,3 +314,31 @@ class PicotechAdcTriggered(HasMapping, HasMeasureTrigger, IsSensor, IsDaemon):
         assert nshots > 0
         self.state_change = True
         self._state["nshots"] = nshots
+
+    def set_threshold_enabled(self, flag: bool):
+        self._state["threshold_enabled"] = flag
+
+    def get_threshold_enabled(self) -> bool:
+        return self._state["threshold_enabled"]
+
+    def get_threshold(self) -> float:
+        return self._state["threshold"]
+
+    def set_threshold(self, val: float):
+        self._state["threshold"] = val
+
+    def get_threshold_units(self):
+        return "V"
+
+    def get_scope_dt(self) -> float:
+        return self.scope_dt
+
+    def get_scope_time_units(self) -> str:
+        return self._time_units
+
+    def get_scope_time(self) -> np.array:
+        return self.scope_time
+
+
+if __name__ == "__main__":
+    PicotechAdcTriggered.main()

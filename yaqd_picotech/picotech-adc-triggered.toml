@@ -17,16 +17,10 @@ linux_c_libraries = "https://www.picotech.com/downloads/linux"
 [installation]
 PyPI = "https://pypi.org/project/yaqd-picotech"
 
-# todo: implement these types
-[[types]]
-type = "enum"
-name = "processing_method"
-symbols = ["average", "sum", "min", "max"]
-
 [[types]]
 type = "enum"
 name = "adc_range"
-symbols = ["_20_mV", "_50_mV", "_100_mV", "_200_mV", "_500_mV", "_1_V", "_2_V", "_5_V", "_10_V", "_20_V"]
+symbols = ["mV_20", "mV_50", "mV_100", "mV_200", "mV_500", "V_1", "V_2", "V_5", "V_10", "V_20"]
 
 [[types]]
 type = "enum"
@@ -37,10 +31,9 @@ symbols = ["DC", "AC"]
 type = "record"
 name = "channel"
 fields = [
-	# {"name"="label", "type"=["null", "string"], "default"="__null__"},
     {"name"="enabled", "type"="boolean", "default"=false},
     {"name"="coupling", "type"="adc_coupling", "default"="DC"},
-	{"name"="range", "type"="adc_range", "default"="5 V"},
+	{"name"="range", "type"="adc_range", "default"="V_5", "doc"="input half-range (in mV)"},
 	{"name"="invert", "type"="boolean", "default"=false},
 ]
 
@@ -125,6 +118,14 @@ event is in the middle of block.\
 type = "int"
 default = 50
 
+[state.threshold]
+type = "float"
+default = 0
+
+[state.threshold_enabled]
+type = "boolean"
+default = 0
+
 [messages]
 
 [messages.get_measured_samples]
@@ -139,6 +140,37 @@ response = "int"
 doc = "Set the number of shots to acquire."
 request = [{"name"="nshots", "type"="int"}]
 
+[messages.get_threshold]
+doc = "Get the lower threshold limit below which scope trace values will be masked."
+response = "float"
+
+[messages.get_threshold_units]
+response = "string"
+
+[messages.set_threshold]
+doc = "Set the lower threshold limit below which scope trace values will be masked."
+request = [{"name"="threshold", "type"="float"}]
+
+[messages.set_threshold_enabled]
+doc = "When enabled, the threshold will mask values in scope traces that are less than the threshold."
+request = [{"name"="enable", "type"="boolean"}]
+
+[messages.get_threshold_enabled]
+doc = "Check whether threshold is enabled"
+response = "boolean"
+
+[messages.get_scope_dt]
+doc = "The time interval between samples in the scope traces.  Corresponds to config parameter 'timebase'."
+response = "float"
+
+[messages.get_scope_time_units]
+response = "string"
+
+[messages.get_scope_time]
+doc = "Return the array of time points corresponding to a scope trace."
+response = {"type"="array", "items"="float"}
+
+[properties]
 
 [properties.nshots]
 type = "int"
@@ -146,3 +178,26 @@ getter = "get_nshots"
 setter = "set_nshots"
 control_kind = "hinted"
 record_kind = "data"
+
+[properties.threshold]
+type = "float"
+getter = "get_threshold"
+setter = "set_threshold"
+units_getter = "get_threshold_units"
+control_kind = "normal"
+record_kind = "metadata"
+
+[properties.threshold_enabled]
+type = "boolean"
+setter = "set_threshold_enabled"
+getter = "get_threshold_enabled"
+control_kind = "normal"
+record_kind = "metadata"
+
+[properties.scope_dt]
+type = "float"
+getter = "get_scope_dt"
+units_getter = "get_scope_time_units"
+dynamic = "false"
+control_kind = "normal"
+record_kind = "metadata"

@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def process(arrs, names, units):
+def process(arrs: dict, names: list, units: list):
     """
     For each channel overall mean
 
@@ -19,7 +19,7 @@ def process(arrs, names, units):
     list
         [ndarray (channels), list of channel names, list of channel units, list of mappings (optional)]
     """
-    out = [arr.mean() for arr in arrs]
+    out = [arr.mean() for arr in arrs.values()]
     out_names = [name + "_mean" for name in names]
     out_units = {name: "V" for name in out_names}
     return [out, out_names, out_units]
